@@ -49,6 +49,12 @@ void setup() {
 }
 
 void loop() {
+    // Ограничиваем loop до 200Гц (5мс) — стабильный период для iBUS сенсора
+    // и WiFi стека. На управление не влияет — ESC всё равно медленнее.
+    static uint32_t loopTimer = 0;
+    while (millis() - loopTimer < 5) { vTaskDelay(1); }
+    loopTimer = millis();
+
     gpsUpdate();
     compassUpdate();
     receiverUpdate();

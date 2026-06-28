@@ -1,0 +1,76 @@
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e293b;border-bottom:1px solid #334155}
+.logo{font-size:1.1rem;font-weight:700;flex:1}
+.badge{padding:3px 8px;border-radius:12px;font-size:.72rem;font-weight:600}
+.badge.ok{background:#166534;color:#86efac}
+.badge.bad{background:#7f1d1d;color:#fca5a5}
+
+/* ── Навигация: 2 ряда по 4 кнопки, iPhone 11 Pro Max = 414px ── */
+nav{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;padding:4px;background:#1e293b;border-bottom:1px solid #334155}
+.tab{padding:6px 1px;border:none;border-radius:6px;background:transparent;color:#94a3b8;cursor:pointer;font-size:.7rem;text-align:center;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab.active{background:#3b82f6;color:#fff;font-weight:600}
+
+main{padding:10px;display:flex;flex-direction:column;gap:10px;max-width:600px;margin:0 auto}
+.card{background:#1e293b;border-radius:10px;padding:14px;border:1px solid #334155}
+.card h2{font-size:.85rem;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #0f172a}
+.row:last-child{border:none}
+.row span:last-child{font-weight:600;color:#f1f5f9}
+.big{font-size:2rem;font-weight:700;text-align:center;padding:10px 0}
+.mode-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-weight:700;font-size:.85rem}
+.mode-MANUAL{background:#1e3a5f;color:#93c5fd}
+.mode-SAVE_WP{background:#3b2200;color:#fbbf24}
+.mode-AUTO{background:#14532d;color:#86efac}
+.wp-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.wp-box{background:#0f172a;border-radius:8px;padding:10px;border:2px solid #334155;text-align:center}
+.wp-box.selected{border-color:#3b82f6}
+.wp-box.valid{border-color:#166534}
+.wp-box.valid.selected{border-color:#22c55e}
+.wp-name{font-size:.8rem;color:#94a3b8;margin-bottom:4px}
+.wp-coords{font-size:.72rem;color:#64748b;word-break:break-all}
+.wp-status{font-size:.7rem;margin-top:4px}
+label{display:block;margin-bottom:4px;font-size:.85rem;color:#94a3b8}
+input[type=number],input[type=range]{width:100%;margin-bottom:12px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px;border-radius:6px}
+select{width:100%;padding:6px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:8px}
+.btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:4px}
+.btn-blue{background:#2563eb;color:#fff}
+.btn-blue:active{background:#1d4ed8}
+.btn-orange{background:#f59e0b;color:#fff}
+.btn-orange:active{background:#d97706}
+.compass-wrap{display:flex;justify-content:center;align-items:center;padding:8px 0}
+canvas#compass{border-radius:50%;background:#0f172a}
+.dist-bar{height:8px;background:#0f172a;border-radius:4px;margin-top:6px;overflow:hidden}
+.dist-fill{height:100%;background:#3b82f6;border-radius:4px;transition:width .3s}
+progress{height:14px;border-radius:7px;width:100%}
+
+/* ── Джойстик ── */
+#joyWrap{position:relative;width:200px;height:200px;background:#0f172a;border-radius:50%;border:2px solid #334155;touch-action:none;user-select:none;-webkit-user-select:none}
+#joyStick{position:absolute;width:66px;height:66px;background:#3b82f6;border-radius:50%;left:67px;top:67px;box-shadow:0 2px 12px rgba(59,130,246,.5)}
+.joy-cross-v{position:absolute;left:50%;top:0;width:1px;height:100%;background:#334155;transform:translateX(-50%)}
+.joy-cross-h{position:absolute;top:50%;left:0;width:100%;height:1px;background:#334155;transform:translateY(-50%)}
+
+/* ── Debug: RC каналы ── */
+.ch-row{display:flex;align-items:center;gap:8px;margin:5px 0}
+.ch-lbl{width:36px;font-size:.8rem;color:#64748b;text-align:right}
+.ch-bar-bg{flex:1;height:10px;background:#0f172a;border-radius:5px;overflow:hidden}
+.ch-bar-fill{height:100%;background:#3b82f6;border-radius:5px}
+.ch-val{width:44px;font-size:.8rem;text-align:right;color:#94a3b8}
+
+/* ── Справка ── */
+.help-row{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid #334155;font-size:.83rem}
+.help-row b{min-width:72px;color:#e2e8f0;flex-shrink:0}
+.help-row span{color:#94a3b8}
+.help-intro{font-size:.82rem;color:#64748b;margin:0 0 10px;line-height:1.5}
+.help-param{margin:10px 0;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid #3b82f6}
+.help-pname{font-size:.88rem;font-weight:600;margin-bottom:4px;color:#e2e8f0}
+.help-pdesc{font-size:.8rem;color:#94a3b8;line-height:1.55}
+.help-steps{padding-left:18px;margin:0}
+.help-steps li{font-size:.83rem;color:#94a3b8;margin:6px 0;line-height:1.5}
+.hint{font-size:.73rem;font-weight:400;color:#64748b;margin-left:4px}
+.sub{font-size:.8rem;color:#64748b;display:block;margin-bottom:3px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+
+/* wp-box когда к ней едем */
+.wp-box.target { border-color:#22c55e; background:#0f2a1a; }
+.wp-box.target .wp-status { font-size:.9rem; }

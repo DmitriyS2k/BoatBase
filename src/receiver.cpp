@@ -101,15 +101,17 @@ void receiverInit() {
     delay(10);
     GPSSerial.begin(9600, SERIAL_8N1, 16, -1);
 
-    // Регистрируем сенсоры в нужном порядке
-    sensMode  = ibusSensor.addSensor(IBUSS_RPM);   // 1: режим
-    sensWp    = ibusSensor.addSensor(IBUSS_RPM);   // 2: точка
-    sensSats  = ibusSensor.addSensor(IBUSS_RPM);   // 3: спутники
-    sensDist  = ibusSensor.addSensor(IBUSS_RPM);   // 4: дистанция
-    sensSpeed = ibusSensor.addSensor(IBUSS_RPM);   // 5: скорость
-    sensBeepA = ibusSensor.addSensor(IBUSS_TEMP);  // 6: звук A
-    sensBeepB = ibusSensor.addSensor(IBUSS_TEMP);  // 7: звук B
-    sensBeepC = ibusSensor.addSensor(IBUSS_TEMP);  // 8: звук C
+    // IBusBM нумерует первый сенсор с индекса 0, но пульт показывает inst начиная с 1.
+    // Instance 0 пульт игнорирует — добавляем заглушку чтобы сдвинуть нумерацию.
+    ibusSensor.addSensor(IBUSS_RPM);               // 0: заглушка (inst0, пульт не видит)
+    sensMode  = ibusSensor.addSensor(IBUSS_RPM);   // 1: режим    (inst1)
+    sensWp    = ibusSensor.addSensor(IBUSS_RPM);   // 2: точка    (inst2)
+    sensSats  = ibusSensor.addSensor(IBUSS_RPM);   // 3: спутники (inst3)
+    sensDist  = ibusSensor.addSensor(IBUSS_RPM);   // 4: дистанция(inst4)
+    sensSpeed = ibusSensor.addSensor(IBUSS_RPM);   // 5: скорость (inst5)
+    sensBeepA = ibusSensor.addSensor(IBUSS_TEMP);  // 6: звук A   (inst6)
+    sensBeepB = ibusSensor.addSensor(IBUSS_TEMP);  // 7: звук B   (inst7)
+    sensBeepC = ibusSensor.addSensor(IBUSS_TEMP);  // 8: звук C   (inst8)
 }
 
 void receiverUpdate() {

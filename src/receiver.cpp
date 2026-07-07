@@ -58,6 +58,7 @@ static uint8_t sensSpeed;    // 5: скорость
 static uint8_t sensBeepA;    // 6: звук — успех (сохранение / GPS fix)
 static uint8_t sensBeepB;    // 7: звук — ошибка (нет GPS при сохранении)
 static uint8_t sensBeepC;    // 8: звук — прибытие
+static uint8_t sensTemp;     // 9: температура мотора
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
 // Возвращает TEMP_ALARM пока beep активен, иначе TEMP_NORMAL.

@@ -58,7 +58,6 @@ static uint8_t sensSpeed;    // 5: скорость
 static uint8_t sensBeepA;    // 6: звук — успех (сохранение / GPS fix)
 static uint8_t sensBeepB;    // 7: звук — ошибка (нет GPS при сохранении)
 static uint8_t sensBeepC;    // 8: звук — прибытие
-static uint8_t sensTemp;     // 9: температура мотора
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
 // Возвращает TEMP_ALARM пока beep активен, иначе TEMP_NORMAL.
@@ -113,7 +112,6 @@ void receiverInit() {
     sensBeepA = ibusSensor.addSensor(IBUSS_TEMP);  // 6: звук A   (inst6)
     sensBeepB = ibusSensor.addSensor(IBUSS_TEMP);  // 7: звук B   (inst7)
     sensBeepC = ibusSensor.addSensor(IBUSS_TEMP);  // 8: звук C   (inst8)
-    sensTemp  = ibusSensor.addSensor(IBUSS_TEMP);  // 9: темп мотора (inst9)
 }
 
 void receiverUpdate() {
@@ -197,15 +195,6 @@ void receiverUpdate() {
     // ── Сенсор 8: звук C — прибытие на точку ────────────────────
     ibusSensor.setSensorMeasurement(sensBeepC, beepValue(boat.beepArrived, BEEP_ARRIVED_MS));
 
-    // ── Сенсор 9: температура мотора ─────────────────────────────
-    // TEMP формат: (celsius + 40) * 10
-    // -127 (датчик не найден) → 0 (отображаем как -40°C = нет данных)
-    // Диапазон: 0°C → 400, 60°C → 1000, 100°C → 1400
-    if (boat.motorTemp > -50.0f) {
-        ibusSensor.setSensorMeasurement(sensTemp, (uint16_t)((boat.motorTemp + 40.0f) * 10.0f));
-    } else {
-        ibusSensor.setSensorMeasurement(sensTemp, 0);  // нет датчика
-    }
 }
 
 int rcNorm(int ch_idx) {

@@ -6,6 +6,7 @@
 #include "receiver.h"
 #include "motors.h"
 #include "navigation.h"
+#include "temperature.h"
 #include "web.h"
 #include "eventlog.h"
 
@@ -42,6 +43,7 @@ void setup() {
     compassInit();
     motorsInit();
     motorsStop();
+    temperatureInit();
     receiverInit();     // Сенсор последним — после GPS
     webInit();
     logEvent("System started");
@@ -58,6 +60,7 @@ void loop() {
     gpsUpdate();
     compassUpdate();
     receiverUpdate();
+    temperatureUpdate();
     webUpdate();
 
     // ── Логируем изменение связи с пультом ──────────────────────

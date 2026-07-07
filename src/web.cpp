@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
+#include <Update.h>
 #include "state.h"
 #include "settings.h"
 #include "compass.h"
@@ -41,6 +42,7 @@ void wsPush() {
     doc["rawX"]      = compassRawX;
     doc["rawY"]      = compassRawY;
     doc["axisMode"]  = cfg.compassAxis;
+    doc["motorTemp"]  = serialized(String(boat.motorTemp, 1));
 
     JsonArray chs = doc["chs"].to<JsonArray>();
     for (int i = 0; i < 10; i++) chs.add(boat.ch[i]);
@@ -174,6 +176,40 @@ void webInit() {
     server.on("/api/log",       HTTP_GET,  handleGetLog);
     server.on("/api/joystick",  HTTP_POST,
         [](AsyncWebServerRequest *req){}, nullptr, handleJoystick);
+
+    // ── OTA прошивка через веб ──────────────────────────────────
+    server.on("/update", HTTP_POST,
+        [](AsyncWebServerRequest *req) {
+            bool ok = !Update.hasError();
+            AsyncWebServerResponse *resp = req->beginResponse(
+                200, "text/plain", ok ? "OK" : "FAIL");
+            resp->addHeader("Connection", "close");
+            req->send(resp);
+            if (ok) {
+                delay(500);
+                ESP.restart();
+            }
+        },
+        [](AsyncWebServerRequest *req, String filename,
+           size_t index, uint8_t *data, size_t len, bool final) {
+            if (!index) {
+                Serial.printf("[OTA] Start: %s\n", filename.c_str());
+                if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
+                    Update.printError(Serial);
+                }
+            }
+            if (Update.write(data, len) != len) {
+                Update.printError(Serial);
+            }
+            if (final) {
+                if (Update.end(true)) {
+                    Serial.printf("[OTA] Done: %u bytes\n", index + len);
+                } else {
+                    Update.printError(Serial);
+                }
+            }
+        }
+    );
 
     server.serveStatic("/", LittleFS, "/").setDefaultFile("index.html");
     server.begin();

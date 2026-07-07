@@ -89,6 +89,8 @@ struct BoatState {
     int      motorRight  = 1500;
 
     float    battery     = 0.0f;
+    float    motorTemp   = -127.0f;  // температура мотора °C, -127 = датчик не найден
+
 };
 
 extern BoatState boat;

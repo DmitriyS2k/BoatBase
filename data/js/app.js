@@ -40,6 +40,7 @@ function buildPage() {
   if (!pg) return;
   switch(curPage) {
     case 'dash':     pg.innerHTML = tmplDash();     break;
+    case 'ota':      pg.innerHTML = tmplOta();      break;
     case 'joystick': pg.innerHTML = tmplJoystick(); initJoystick(); break;
     case 'nav':      pg.innerHTML = tmplNav();      break;
     case 'log':      pg.innerHTML = tmplLog();      loadLog();  break;
@@ -71,6 +72,14 @@ function updateInPlace() {
     setText('d-lat',   s.lat ?? '—');
     setText('d-lon',   s.lon ?? '—');
     setText('d-speed', (s.speed ?? 0) + ' км/ч');
+    if (s.motorTemp != null) {
+      const t = parseFloat(s.motorTemp);
+      const el = document.getElementById('d-temp');
+      if (el) {
+        el.textContent = t < -50 ? 'нет датчика' : t.toFixed(1) + ' °C';
+        el.style.color = t >= 60 ? '#ef4444' : t >= 50 ? '#f97316' : '';
+      }
+    }
     setText('d-heading', (s.heading ?? 0) + '°');
     const modeStr = MODES[s.mode] || 'MANUAL';
     const mb = document.getElementById('d-mode');
@@ -176,6 +185,10 @@ function tmplDash() {
   <div class="row"><span>Широта</span><span id="d-lat">—</span></div>
   <div class="row"><span>Долгота</span><span id="d-lon">—</span></div>
   <div class="row"><span>Скорость</span><span id="d-speed">—</span></div>
+</div>
+<div class="card">
+  <h2>Мотор</h2>
+  <div class="row"><span>Температура</span><span id="d-temp">—</span></div>
 </div>
 <div class="card">
   <h2>Компас</h2>
@@ -697,3 +710,59 @@ function loadLog() {
 
 buildPage();
 connectWS();
+
+function tmplOta() {
+  return `
+<div class="card">
+  <h2>Обновление прошивки</h2>
+  <p style="font-size:.85rem;color:#64748b;margin-bottom:12px">
+    Скомпилируй прошивку в PlatformIO (Ctrl+Alt+B), возьми файл
+    <b>.pio/build/esp32doit-devkit-v1/firmware.bin</b> и загрузи здесь.
+  </p>
+  <input type="file" id="otaFile" accept=".bin" style="margin-bottom:12px"/>
+  <br/>
+  <button id="otaBtn" onclick="otaUpload()">Загрузить прошивку</button>
+  <div id="otaStatus" style="margin-top:12px;font-size:.9rem"></div>
+  <div id="otaBar" style="display:none;margin-top:8px;background:#1e293b;border-radius:6px;height:12px">
+    <div id="otaFill" style="height:100%;border-radius:6px;background:#22c55e;width:0%;transition:width .3s"></div>
+  </div>
+</div>`;
+}
+
+function otaUpload() {
+  const file = document.getElementById('otaFile').files[0];
+  if (!file) { alert('Выбери .bin файл'); return; }
+  const btn = document.getElementById('otaBtn');
+  const status = document.getElementById('otaStatus');
+  const bar = document.getElementById('otaBar');
+  const fill = document.getElementById('otaFill');
+  btn.disabled = true;
+  bar.style.display = 'block';
+  status.textContent = 'Загрузка...';
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/update');
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) {
+      const pct = Math.round(e.loaded * 100 / e.total);
+      fill.style.width = pct + '%';
+      status.textContent = 'Загрузка... ' + pct + '%';
+    }
+  };
+  xhr.onload = () => {
+    if (xhr.responseText === 'OK') {
+      status.textContent = '✅ Готово! ESP32 перезагружается...';
+      fill.style.width = '100%';
+    } else {
+      status.textContent = '❌ Ошибка: ' + xhr.responseText;
+      btn.disabled = false;
+    }
+  };
+  xhr.onerror = () => {
+    status.textContent = '❌ Нет соединения';
+    btn.disabled = false;
+  };
+  const fd = new FormData();
+  fd.append('firmware', file, file.name);
+  xhr.send(fd);
+}
+

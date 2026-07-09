@@ -123,10 +123,11 @@ MotorOut navigationStep(int speedLimit) {
     int left  = maxSpeed;
     int right = maxSpeed;
 
-    if (pidOut > 0) {
-        right = maxSpeed - pidOut;  // притормозить правый → поворот налево
-    } else if (pidOut < 0) {
-        left  = maxSpeed + pidOut;  // притормозить левый  → поворот направо
+    int pidClamped = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
+    if (pidClamped > 0) {
+        right = maxSpeed - pidClamped;  // притормозить правый → поворот налево
+    } else if (pidClamped < 0) {
+        left  = maxSpeed + pidClamped;  // притормозить левый  → поворот направо
     }
 
     left  = constrain(left,  1000, 2000);
@@ -164,9 +165,10 @@ MotorOut cruiseStep(int thrust, int ch4) {
     float totalSteer = (manualSteer != 0) ? (float)manualSteer : autoSteer;
     totalSteer = constrain(totalSteer, -100.0f, 100.0f);
 
-    // Коэффициент 2.0 — более агрессивная коррекция курса
-    int left  = constrain((int)(thrust + totalSteer * 2.0f), 1000, 2000);
-    int right = constrain((int)(thrust - totalSteer * 2.0f), 1000, 2000);
+    // Ограничиваем разницу моторов через cfg.maxDiff
+    float steerClamped = constrain(totalSteer, -(float)cfg.maxDiff/2, (float)cfg.maxDiff/2);
+    int left  = constrain((int)(thrust + steerClamped), 1000, 2000);
+    int right = constrain((int)(thrust - steerClamped), 1000, 2000);
 
     return {left, right};
 }

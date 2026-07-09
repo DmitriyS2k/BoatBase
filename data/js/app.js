@@ -343,16 +343,18 @@ function tmplSettings() {
   <p class="help-intro">Подробное описание — вкладка Справка. Стартовые значения проверены на воде (Katerok).</p>
 
   <label>Kp = <span id="kpVal">—</span> <span class="hint">основная сила поворота · вилянье → уменьши</span></label>
-  <input type="range" id="pidKp" min="0.5" max="20" step="0.1" value="7.9">
+  <input type="range" id="pidKp" min="0.5" max="20" step="0.1" value="3.0">
 
   <label>Ki = <span id="kiVal">—</span> <span class="hint">убирает постоянное отклонение от курса</span></label>
-  <input type="range" id="pidKi" min="0" max="20" step="0.1" value="7.6">
+  <input type="range" id="pidKi" min="0" max="20" step="0.1" value="1.5">
 
   <label>Kd = <span id="kdVal">—</span> <span class="hint">гасит колебания · обычно не трогать</span></label>
-  <input type="range" id="pidKd" min="0" max="5" step="0.05" value="0.2">
+  <input type="range" id="pidKd" min="0" max="5" step="0.05" value="0.5">
 
   <label>Круиз gain = <span id="crgVal">—</span> <span class="hint">удержание курса в ручном круизе (ch3)</span></label>
-  <input type="range" id="cruiseGain" min="0.1" max="5" step="0.1" value="1.5">
+  <input type="range" id="cruiseGain" min="0.1" max="5" step="0.1" value="0.8">
+  <div class="row"><span>Макс. разница моторов (maxDiff)</span><span id="mdVal">150</span></div>
+  <input type="range" id="maxDiff" min="10" max="400" step="5" value="150">
 
   <button class="btn btn-blue" onclick="saveSettings()">💾 Сохранить</button>
 </div>
@@ -471,6 +473,7 @@ function loadSettings() {
       set('pidKi',        d.pidKi);
       set('pidKd',        d.pidKd);
       set('cruiseGain',   d.cruiseGain);
+      set('maxDiff',      d.maxDiff ?? 150);
       set('cruiseSpeed',  d.cruiseSpeed);
       set('slowdownDist', d.slowdownDist ?? 5);
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
@@ -483,7 +486,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','cruiseGain','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','cruiseGain','maxDiff','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -498,6 +501,7 @@ function updRangeLabels() {
   bind('pidKi','kiVal',1);
   bind('pidKd','kdVal',2);
   bind('cruiseGain','crgVal',1);
+  bind('maxDiff','mdVal',0);
 
   // Trim ползунки
   const tl = parseInt(document.getElementById('trimLeft')?.value  || 0);
@@ -518,6 +522,7 @@ function saveSettings() {
   const get=id=>{const e=document.getElementById(id);return e?e.value:null;};
   const body={
     pidKp:         parseFloat(get('pidKp')),
+    maxDiff:       parseInt(get('maxDiff')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
     cruiseGain:    parseFloat(get('cruiseGain')),

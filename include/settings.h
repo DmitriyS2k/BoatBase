@@ -3,9 +3,9 @@
 
 struct BoatSettings {
     // Навигация (PID автопилот — взято из Katerok)
-    float pidKp         = 7.9f;   // P: исправляет ошибку сейчас
-    float pidKi         = 7.6f;   // I: накопленная ошибка
-    float pidKd         = 0.2f;   // D: производная (демпфирование)
+    float pidKp         = 3.0f;   // P: исправляет ошибку сейчас
+    float pidKi         = 1.5f;   // I: накопленная ошибка
+    float pidKd         = 0.5f;   // D: производная (демпфирование)
     float arrivalRadius = 3.0f;   // метры — считать «прибыл»
     int   cruiseSpeed   = 1650;   // PWM тяга в авто-режиме (1500..1900)
     int   minSatellites = 5;      // минимум спутников
@@ -19,7 +19,8 @@ struct BoatSettings {
     int   trimRight     = 0;
 
     // Круиз (ручной с удержанием курса)
-    float cruiseGain    = 1.5f;
+    float cruiseGain    = 0.8f;
+    int   maxDiff       = 150;    // макс разница PWM между моторами при коррекции (1..400)
 
     // Компас
     float compassDecl      = 0.0f;  // магнитное склонение

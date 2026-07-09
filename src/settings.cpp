@@ -7,7 +7,7 @@ static Preferences prefs;
 
 void settingsLoad() {
     prefs.begin("boat", true);
-    cfg.pidKp          = prefs.getFloat("pidKp",    7.9f);
+    cfg.pidKp          = prefs.getFloat("pidKp",    3.0f);
     cfg.pidKi          = prefs.getFloat("pidKi",    7.6f);
     cfg.pidKd          = prefs.getFloat("pidKd",    0.2f);
     cfg.arrivalRadius  = prefs.getFloat("aRadius",  3.0f);
@@ -17,7 +17,8 @@ void settingsLoad() {
     cfg.slowdownSpeed  = prefs.getInt  ("slowSpd",  1550);
     cfg.trimLeft       = prefs.getInt  ("trimL",    0);
     cfg.trimRight      = prefs.getInt  ("trimR",    0);
-    cfg.cruiseGain     = prefs.getFloat("cruGain",  2.0f);
+    cfg.cruiseGain     = prefs.getFloat("cruGain",  0.8f);
+    cfg.maxDiff        = prefs.getInt("maxDiff",    150);
     cfg.compassDecl    = prefs.getFloat("cDecl",    0.0f);
     cfg.compassXOffset = prefs.getFloat("cXOff",    0.0f);
     cfg.compassYOffset = prefs.getFloat("cYOff",    0.0f);
@@ -50,6 +51,7 @@ void settingsSave() {
     prefs.putInt  ("trimL",   cfg.trimLeft);
     prefs.putInt  ("trimR",   cfg.trimRight);
     prefs.putFloat("cruGain", cfg.cruiseGain);
+    prefs.putInt("maxDiff",   cfg.maxDiff);
     prefs.putFloat("cDecl",   cfg.compassDecl);
     prefs.putFloat("cXOff",   cfg.compassXOffset);
     prefs.putFloat("cYOff",   cfg.compassYOffset);

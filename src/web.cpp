@@ -215,6 +215,25 @@ void webInit() {
     server.begin();
 }
 
+static bool wifiEnabled = true;  // WiFi включён по умолчанию
+
+void setWifiEnabled(bool enable) {
+    if (enable == wifiEnabled) return;
+    wifiEnabled = enable;
+    if (enable) {
+        WiFi.mode(WIFI_AP);
+        WiFi.softAP("BoatAutopilot", "12345678");
+        Serial.println("[WiFi] AP started");
+    } else {
+        ws.closeAll();
+        ws.cleanupClients();
+        WiFi.softAPdisconnect(true);
+        Serial.println("[WiFi] AP stopped");
+    }
+}
+
+bool getWifiEnabled() { return wifiEnabled; }
+
 void webUpdate() {
     static uint32_t t = 0;
     if (millis() - t >= 200) {

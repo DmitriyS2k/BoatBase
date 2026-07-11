@@ -167,8 +167,12 @@ MotorOut cruiseStep(int thrust, int ch4) {
 
     // Ограничиваем разницу моторов через cfg.maxDiff
     float steerClamped = constrain(totalSteer, -(float)cfg.maxDiff/2, (float)cfg.maxDiff/2);
-    int left  = constrain((int)(thrust + steerClamped), 1000, 2000);
-    int right = constrain((int)(thrust - steerClamped), 1000, 2000);
+    // Центрируем тягу чтобы коррекция была симметричной при высоком газе
+    // Если thrust высокий, опускаем оба мотора чтобы было место для коррекции вверх
+    int maxSteer = (int)fabsf(steerClamped);
+    int centeredThrust = constrain(thrust, 1000, 2000 - maxSteer);
+    int left  = constrain((int)(centeredThrust + steerClamped), 1000, 2000);
+    int right = constrain((int)(centeredThrust - steerClamped), 1000, 2000);
 
     return {left, right};
 }

@@ -198,6 +198,12 @@ void loop() {
 
     if (boat.mode == MODE_SAVE_WP) {
         motorsStop();
+        // CH4 > 1800 → включить WiFi, CH4 < 1200 → выключить
+        {
+            int ch4 = boat.ch[3];
+            if (ch4 > 1800 && !getWifiEnabled()) setWifiEnabled(true);
+            if (ch4 < 1200 && getWifiEnabled())  setWifiEnabled(false);
+        }
         static uint32_t saveDelay = 0;
         // Сохраняем только если GPS качественный: фикс + HDOP < 3 + минимум спутников
         bool gpsGood = boat.gpsFix

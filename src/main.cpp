@@ -209,7 +209,7 @@ void loop() {
         bool gpsGood = boat.gpsFix
                     && boat.hdop < 3.0f
                     && boat.satellites >= cfg.minSatellites;
-        if (boat.ch[0] >= 1900 && gpsGood) {
+        if (boat.ch[0] >= 1600 && gpsGood) {
             if (millis() - saveDelay > 600) {
                 saveDelay = millis();
                 Waypoint &wp = boat.waypoints[boat.wpSelected];
@@ -223,7 +223,7 @@ void loop() {
                          boat.wpSelected, wp.lat, wp.lon,
                          boat.hdop, boat.satellites);
             }
-        } else if (boat.ch[0] >= 1900 && !gpsGood) {
+        } else if (boat.ch[0] >= 1600 && !gpsGood) {
             // Пробуем сохранить но GPS плохой — логируем и пищим два раза
             static uint32_t warnDelay = 0;
             if (millis() - warnDelay > 2000) {
@@ -252,7 +252,7 @@ void loop() {
 
         // ch2 <= 1100 → GO HOME (точка 0), независимо от ch5
         static bool prevGoHome = false;
-        bool goHome = (boat.ch[1] <= 1100) && boat.waypoints[0].valid;
+        bool goHome = (boat.ch[1] <= 1400) && boat.waypoints[0].valid;
         if (goHome && !prevGoHome) {
             boat.wpTarget   = 0;
             boat.navigating = true;
@@ -263,7 +263,7 @@ void loop() {
 
         // ch2 >= 1900 → GO TO выбранной точки (ch5)
         static bool prevGoWp = false;
-        bool goWp = (boat.ch[1] >= 1900) && boat.waypoints[boat.wpSelected].valid;
+        bool goWp = (boat.ch[1] >= 1600) && boat.waypoints[boat.wpSelected].valid;
         if (goWp && !prevGoWp) {
             float dist = geoDistance(
                 boat.latitude, boat.longitude,

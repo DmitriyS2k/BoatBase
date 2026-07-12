@@ -52,6 +52,7 @@ static uint8_t sensWp;       // 2: выбранная точка
 static uint8_t sensSats;     // 3: спутники
 static uint8_t sensDist;     // 4: дистанция
 static uint8_t sensSpeed;    // 5: скорость
+static uint8_t sensEvent;    // 6: событие (0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие)
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
 void receiverInit() {
@@ -154,19 +155,19 @@ void receiverUpdate() {
         // событие ещё активно — держим значение
     } else if (boat.beepArrived.active) {
         eventVal = 3;
-        eventEnd = now + BEEP_ARRIVED_MS;
+        eventEnd = now + 3000;  // 3 сек — пульт точно успеет опросить
         boat.beepArrived.active = false;
     } else if (boat.beepNoGps.active) {
         eventVal = 2;
-        eventEnd = now + BEEP_NOGPS_PULSE_MS * 3;
+        eventEnd = now + 3000;
         boat.beepNoGps.active = false;
     } else if (boat.beepSaved.active) {
         eventVal = 1;
-        eventEnd = now + BEEP_SAVED_MS;
+        eventEnd = now + 3000;
         boat.beepSaved.active = false;
     } else if (boat.beepGpsFix.active) {
         eventVal = 1;
-        eventEnd = now + BEEP_GPSFIX_MS;
+        eventEnd = now + 3000;
         boat.beepGpsFix.active = false;
     } else {
         eventVal = 0;

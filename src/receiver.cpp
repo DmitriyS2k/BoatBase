@@ -35,9 +35,6 @@
 
 // TEMP формат: value = (celsius + 40) * 10
 // 0°C (норма) → 400, 150°C (тревога) → 1900
-#define TEMP_NORMAL  400
-#define TEMP_ALARM   1900
-
 // Длительности звуков
 #define BEEP_SAVED_MS    800   // сохранение точки — короткий
 #define BEEP_GPSFIX_MS   600   // GPS нашёл спутники — короткий
@@ -55,38 +52,8 @@ static uint8_t sensWp;       // 2: выбранная точка
 static uint8_t sensSats;     // 3: спутники
 static uint8_t sensDist;     // 4: дистанция
 static uint8_t sensSpeed;    // 5: скорость
-static uint8_t sensBeepA;    // 6: звук — успех (сохранение / GPS fix)
-static uint8_t sensBeepB;    // 7: звук — ошибка (нет GPS при сохранении)
-static uint8_t sensBeepC;    // 8: звук — прибытие
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
-// Возвращает TEMP_ALARM пока beep активен, иначе TEMP_NORMAL.
-// Автоматически сбрасывает beep.active по истечении durationMs.
-static uint16_t beepValue(BeepState &b, uint32_t durationMs) {
-    if (!b.active) return TEMP_NORMAL;
-    if (millis() - b.startMs >= durationMs) {
-        b.active = false;
-        return TEMP_NORMAL;
-    }
-    return TEMP_ALARM;
-}
-
-// ── Два быстрых пика для sensBeepB (нет GPS) ───────────────────
-// Фаза 0: пик  (0..220мс)   → ALARM
-// Фаза 1: пауза(220..440мс) → NORMAL
-// Фаза 2: пик  (440..660мс) → ALARM
-// Фаза 3: конец(>660мс)     → NORMAL + сброс
-static uint16_t beepDoubleValue(BeepState &b) {
-    if (!b.active) return TEMP_NORMAL;
-    uint32_t t = millis() - b.startMs;
-    if (t >= BEEP_NOGPS_PULSE_MS * 3) {
-        b.active = false;
-        return TEMP_NORMAL;
-    }
-    uint32_t phase = t / BEEP_NOGPS_PULSE_MS;  // 0, 1, 2
-    return (phase == 1) ? TEMP_NORMAL : TEMP_ALARM;  // фаза 1 — пауза
-}
-
 void receiverInit() {
     IBusServoSerial.begin(115200, SERIAL_8N1, IBUS_SERVO_RX_PIN, -1);
     ibusServo.begin(IBusServoSerial, IBUSBM_NOTIMER);
@@ -109,9 +76,7 @@ void receiverInit() {
     sensSats  = ibusSensor.addSensor(IBUSS_RPM);   // 3: спутники (inst3)
     sensDist  = ibusSensor.addSensor(IBUSS_RPM);   // 4: дистанция(inst4)
     sensSpeed = ibusSensor.addSensor(IBUSS_RPM);   // 5: скорость (inst5)
-    sensBeepA = ibusSensor.addSensor(IBUSS_TEMP);  // 6: звук A   (inst6)
-    sensBeepB = ibusSensor.addSensor(IBUSS_TEMP);  // 7: звук B   (inst7)
-    sensBeepC = ibusSensor.addSensor(IBUSS_TEMP);  // 8: звук C   (inst8)
+    sensEvent = ibusSensor.addSensor(IBUSS_RPM);   // 6: событие  (inst6)
 }
 
 void receiverUpdate() {
@@ -177,23 +142,36 @@ void receiverUpdate() {
     // OpenI6X RPM сенсор: делитель настраивается на пульте, ставь /10
     ibusSensor.setSensorMeasurement(sensSpeed, (uint16_t)(boat.speed * 10.0f));
 
-    // ── Сенсор 6: звук A — успех (сохранение точки / GPS fix) ───
-    // beepSaved и beepGpsFix разделяют один сенсор:
-    // оба "хороших" события — один и тот же звук на пульте.
-    // Приоритет: beepSaved > beepGpsFix
-    uint16_t valA = TEMP_NORMAL;
-    if (boat.beepSaved.active) {
-        valA = beepValue(boat.beepSaved, BEEP_SAVED_MS);
+    // ── Сенсор 6: событие (RPM) ──────────────────────────────────
+    // 0 = тихо, 1 = сохранено/GPS fix, 2 = нет GPS, 3 = прибытие
+    // Приоритет: прибытие > ошибка > успех
+    // Сбрасываем флаги после истечения времени
+    static uint16_t eventVal = 0;
+    static uint32_t eventEnd = 0;
+    uint32_t now = millis();
+
+    if (now < eventEnd) {
+        // событие ещё активно — держим значение
+    } else if (boat.beepArrived.active) {
+        eventVal = 3;
+        eventEnd = now + BEEP_ARRIVED_MS;
+        boat.beepArrived.active = false;
+    } else if (boat.beepNoGps.active) {
+        eventVal = 2;
+        eventEnd = now + BEEP_NOGPS_PULSE_MS * 3;
+        boat.beepNoGps.active = false;
+    } else if (boat.beepSaved.active) {
+        eventVal = 1;
+        eventEnd = now + BEEP_SAVED_MS;
+        boat.beepSaved.active = false;
     } else if (boat.beepGpsFix.active) {
-        valA = beepValue(boat.beepGpsFix, BEEP_GPSFIX_MS);
+        eventVal = 1;
+        eventEnd = now + BEEP_GPSFIX_MS;
+        boat.beepGpsFix.active = false;
+    } else {
+        eventVal = 0;
     }
-    ibusSensor.setSensorMeasurement(sensBeepA, valA);
-
-    // ── Сенсор 7: звук B — ошибка (нет GPS при сохранении) ──────
-    ibusSensor.setSensorMeasurement(sensBeepB, beepDoubleValue(boat.beepNoGps));
-
-    // ── Сенсор 8: звук C — прибытие на точку ────────────────────
-    ibusSensor.setSensorMeasurement(sensBeepC, beepValue(boat.beepArrived, BEEP_ARRIVED_MS));
+    ibusSensor.setSensorMeasurement(sensEvent, eventVal);
 
 }
 

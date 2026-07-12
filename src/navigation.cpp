@@ -62,6 +62,7 @@ static int computePID(float currentHeading, float targetHeading,
 void navigationReset() {
     pidIntegral = 0.0f;
     pidPrevErr  = 0.0f;
+    // smoothBearing сбросится в navigationStep при следующем старте
 }
 
 // ── Структура выхода моторов ─────────────────────────────────────
@@ -94,7 +95,22 @@ MotorOut navigationStep(int speedLimit) {
         return {1500, 1500};
     }
 
-    float bearing = geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
+    float rawBearing = geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
+    // Сглаживаем bearing фильтром низких частот (alpha=0.1) чтобы убрать GPS шум
+    // Без фильтра GPS прыжки на 1-3м меняют bearing на несколько градусов → рывки
+    static float smoothBearing = -1.0f;
+    if (smoothBearing < 0.0f) {
+        smoothBearing = rawBearing;  // первый цикл — без фильтра
+    } else {
+        // Учитываем переход через 0/360
+        float diff = rawBearing - smoothBearing;
+        if (diff > 180.0f)  diff -= 360.0f;
+        if (diff < -180.0f) diff += 360.0f;
+        smoothBearing += cfg.bearingAlpha * diff;
+        if (smoothBearing < 0.0f)   smoothBearing += 360.0f;
+        if (smoothBearing >= 360.0f) smoothBearing -= 360.0f;
+    }
+    float bearing = smoothBearing;
     boat.targetHeading = bearing;
 
     // Максимальная мощность: как в Katerok снижаем при приближении

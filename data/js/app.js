@@ -257,8 +257,7 @@ function tmplHelp() {
   <div class="help-row"><b>inst2 RPM</b><span>Выбранная точка: 0=Дом, 1-3=Точки</span></div>
   <div class="help-row"><b>inst3 RPM</b><span>Количество спутников GPS</span></div>
   <div class="help-row"><b>inst4 RPM</b><span>Дистанция до точки (м): в AUTO — до цели, иначе — до дома</span></div>
-  <div class="help-row"><b>inst5 RPM</b><span>Скорость км/ч × 10 (настрой делитель /10 на пульте)</span></div>
-  <div class="help-row"><b>inst6 RPM</b><span>Событие: 0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие — настрой звуки по значению в Special Functions</span></div>
+  <div class="help-row"><b>inst5 RPM</b><span>Событие: 0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие — настрой звуки по значению в Special Functions</span></div>
 </div>
 
 <div class="card">

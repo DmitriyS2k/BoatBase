@@ -51,8 +51,7 @@ static uint8_t sensMode;     // 1: режим
 static uint8_t sensWp;       // 2: выбранная точка
 static uint8_t sensSats;     // 3: спутники
 static uint8_t sensDist;     // 4: дистанция
-static uint8_t sensSpeed;    // 5: скорость
-static uint8_t sensEvent;    // 6: событие (0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие)
+static uint8_t sensEvent;    // 5: событие (0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие)
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
 void receiverInit() {
@@ -76,8 +75,7 @@ void receiverInit() {
     sensWp    = ibusSensor.addSensor(IBUSS_RPM);   // 2: точка    (inst2)
     sensSats  = ibusSensor.addSensor(IBUSS_RPM);   // 3: спутники (inst3)
     sensDist  = ibusSensor.addSensor(IBUSS_RPM);   // 4: дистанция(inst4)
-    sensSpeed = ibusSensor.addSensor(IBUSS_RPM);   // 5: скорость (inst5)
-    sensEvent = ibusSensor.addSensor(IBUSS_RPM);   // 6: событие  (inst6)
+    sensEvent = ibusSensor.addSensor(IBUSS_RPM);   // 5: событие  (inst5)
 }
 
 void receiverUpdate() {
@@ -141,8 +139,6 @@ void receiverUpdate() {
     // ── Сенсор 5: скорость км/ч × 10 ────────────────────────────
     // Умножаем на 10 чтобы показывать одно знаковое место (12.3 → 123)
     // OpenI6X RPM сенсор: делитель настраивается на пульте, ставь /10
-    ibusSensor.setSensorMeasurement(sensSpeed, (uint16_t)(boat.speed * 10.0f));
-
     // ── Сенсор 6: событие (RPM) ──────────────────────────────────
     // 0 = тихо, 1 = сохранено/GPS fix, 2 = нет GPS, 3 = прибытие
     // Приоритет: прибытие > ошибка > успех

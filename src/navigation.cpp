@@ -60,6 +60,21 @@ static int computePID(float currentHeading, float targetHeading,
     return (int)constrain(out, (float)minOut, (float)maxOut);
 }
 
+// Нелинейная коррекция выхода PID (pidCurve).
+// 550-моторы слишком мощные для линейного PID: мелкий шум курса (пара градусов)
+// даёт заметную разницу PWM → корабль дёргается влево-вправо.
+// curve=1.0 — без изменений (линейно, как раньше).
+// curve>1.0 — у центра (маленькие ошибки) выход подавляется сильнее, чем у краёв
+// (большие ошибки) — гасит рысканье от шума, но не теряет силу для реальных отклонений.
+// curve<1.0 — обратный эффект (резче у центра), обычно не нужен.
+static float applyPidCurve(float val, float range, float curve) {
+    if (range < 1.0f || curve <= 0.01f) return val;
+    float norm = constrain(val / range, -1.0f, 1.0f);
+    float sign = (norm < 0.0f) ? -1.0f : 1.0f;
+    float curved = sign * powf(fabsf(norm), curve);
+    return curved * range;
+}
+
 // Сброс PID при начале новой навигации
 void navigationReset() {
     pidIntegral = 0.0f;
@@ -137,9 +152,12 @@ MotorOut navigationStep(int speedLimit) {
                             cfg.pidKp, cfg.pidKi, cfg.pidKd,
                             dt, -halfRange, halfRange);
 
+    // Нелинейная коррекция — смягчает реакцию на мелкие ошибки курса
+    float pidCurved = applyPidCurve((float)pidRaw, (float)halfRange, cfg.pidCurve);
+
     // Сглаживание выхода PID — убирает резкие скачки моторов
     // alpha=0.3: новое значение на 30%, старое на 70% → плавные изменения
-    smoothPid = smoothPid * 0.7f + (float)pidRaw * 0.3f;
+    smoothPid = smoothPid * 0.7f + pidCurved * 0.3f;
     int pidOut = constrain((int)smoothPid, -halfRange, halfRange);
     pidOut = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
 

@@ -277,6 +277,10 @@ function tmplHelp() {
     <div class="help-pdesc">Гасит колебания и рывки. <b>Слишком много</b> — дёргается, резко реагирует на шум компаса. Если есть мелкие рывки при движении — увеличь до 1.0-2.0. Обычно не трогают после первичной настройки.</div>
   </div>
   <div class="help-param">
+    <div class="help-pname">Нелинейность выхода (pidCurve) — старт 1.0</div>
+    <div class="help-pdesc">Смягчает реакцию на мелкие ошибки курса, не теряя силу на больших. Моторы 550 слишком мощные — при линейном PID (curve=1.0) даже пара градусов шума компаса даёт заметный рывок мотора, корабль дёргается влево-вправо. <b>Увеличь до 1.5-2.5</b> — у центра (маленькие ошибки) коррекция станет заметно слабее, а у краёв (реальные большие отклонения) останется почти такой же сильной. Пробуй это в первую очередь если есть мелкие рывки при в целом верном курсе.</div>
+  </div>
+  <div class="help-param">
     <div class="help-pname">Макс. разница моторов (maxDiff) — старт 150</div>
     <div class="help-pdesc">Ограничивает насколько сильно автопилот может отклонить один мотор от другого. <b>Мало (50-100)</b> — плавные повороты, широкая дуга захода на точку, меньше рыскания. <b>Много (250-350)</b> — крутые повороты, заход на точку прямее. Начни с 150, увеличивай если идёт слишком широкой дугой.</div>
   </div>
@@ -329,7 +333,7 @@ function tmplHelp() {
     <li>Сохрани точку Дом: выйди на воду, переключи SAVE WP, ch1≥1600 при хорошем GPS (≥6 спутников).</li>
     <li>Установи стартовые значения PID: Kp=3.0, Ki=1.5, Kd=0.5, maxDiff=150, bearingAlpha=0.15.</li>
     <li>Дай команду вернуться домой (AUTO → ch2≤1400). Смотри как едет.</li>
-    <li>Рыскает влево-вправо → уменьши Kp или maxDiff. Идёт широкой дугой → увеличь maxDiff.</li>
+    <li>Рыскает влево-вправо рывками → сначала увеличь pidCurve до 1.5-2.5 (мощные моторы 550 иначе дёргаются от шума). Если не помогло — уменьши Kp или maxDiff. Идёт широкой дугой → увеличь maxDiff.</li>
     <li>Мелкие рывки при прямом движении → уменьши bearingAlpha до 0.08.</li>
     <li>Постоянно уходит в одну сторону → добавь Ki от 0 по 0.5.</li>
     <li>Промахивается мимо точки → увеличь расстояние замедления или уменьши скорость.</li>
@@ -377,6 +381,9 @@ function tmplSettings() {
 
   <label>Kd = <span id="kdVal">—</span> <span class="hint">гасит колебания · обычно не трогать</span></label>
   <input type="range" id="pidKd" min="0" max="5" step="0.05" value="0.5">
+
+  <label>Нелинейность (pidCurve) = <span id="pcVal">—</span> <span class="hint">1.0=линейно · выше=мягче у центра, жёстче у краёв</span></label>
+  <input type="range" id="pidCurve" min="0.5" max="3" step="0.1" value="1.0">
 
   <label>Круиз gain = <span id="crgVal">—</span> <span class="hint">удержание курса в ручном круизе (ch3)</span></label>
   <input type="range" id="cruiseGain" min="0.1" max="5" step="0.1" value="0.8">
@@ -503,6 +510,7 @@ function loadSettings() {
       set('pidKp',        d.pidKp);
       set('pidKi',        d.pidKi);
       set('pidKd',        d.pidKd);
+      set('pidCurve',     d.pidCurve ?? 1.0);
       set('cruiseGain',   d.cruiseGain);
       set('maxDiff',      d.maxDiff ?? 150);
       set('bearingAlpha', d.bearingAlpha ?? 0.15);
@@ -519,7 +527,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','cruiseGain','maxDiff','bearingAlpha','navInterval','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -533,6 +541,7 @@ function updRangeLabels() {
   bind('pidKp','kpVal',1);
   bind('pidKi','kiVal',1);
   bind('pidKd','kdVal',2);
+  bind('pidCurve','pcVal',2);
   bind('cruiseGain','crgVal',1);
   bind('maxDiff','mdVal',0);
   bind('bearingAlpha','baVal',2);
@@ -562,6 +571,7 @@ function saveSettings() {
     navInterval:   parseInt(get('navInterval')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
+    pidCurve:      parseFloat(get('pidCurve')),
     cruiseGain:    parseFloat(get('cruiseGain')),
     cruiseSpeed:   parseInt(get('cruiseSpeed')),
     slowdownDist:  parseFloat(get('slowdownDist') || 5),

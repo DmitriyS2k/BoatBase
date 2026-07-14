@@ -10,6 +10,7 @@ void settingsLoad() {
     cfg.pidKp          = prefs.getFloat("pidKp",    3.0f);
     cfg.pidKi          = prefs.getFloat("pidKi",    7.6f);
     cfg.pidKd          = prefs.getFloat("pidKd",    0.2f);
+    cfg.pidCurve       = prefs.getFloat("pidCurve", 1.0f);
     cfg.arrivalRadius  = prefs.getFloat("aRadius",  3.0f);
     cfg.cruiseSpeed    = prefs.getInt  ("cSpeed",   1650);
     cfg.minSatellites  = prefs.getInt  ("minSat",   5);
@@ -45,6 +46,7 @@ void settingsSave() {
     prefs.putFloat("pidKp",   cfg.pidKp);
     prefs.putFloat("pidKi",   cfg.pidKi);
     prefs.putFloat("pidKd",   cfg.pidKd);
+    prefs.putFloat("pidCurve",cfg.pidCurve);
     prefs.putFloat("aRadius", cfg.arrivalRadius);
     prefs.putInt  ("cSpeed",  cfg.cruiseSpeed);
     prefs.putInt  ("minSat",  cfg.minSatellites);

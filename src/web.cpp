@@ -69,6 +69,7 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["pidKp"]           = cfg.pidKp;
     doc["pidKi"]           = cfg.pidKi;
     doc["pidKd"]           = cfg.pidKd;
+    doc["pidCurve"]        = cfg.pidCurve;
     doc["arrivalRadius"]   = cfg.arrivalRadius;
     doc["cruiseSpeed"]     = cfg.cruiseSpeed;
     doc["minSatellites"]   = cfg.minSatellites;
@@ -99,6 +100,7 @@ static void handlePostSettings(AsyncWebServerRequest *req, uint8_t *data,
     if (doc["pidKp"].is<float>())           cfg.pidKp           = doc["pidKp"];
     if (doc["pidKi"].is<float>())           cfg.pidKi           = doc["pidKi"];
     if (doc["pidKd"].is<float>())           cfg.pidKd           = doc["pidKd"];
+    if (doc["pidCurve"].is<float>())        cfg.pidCurve        = doc["pidCurve"];
     if (doc["arrivalRadius"].is<float>())   cfg.arrivalRadius   = doc["arrivalRadius"];
     if (doc["cruiseSpeed"].is<int>())       cfg.cruiseSpeed     = doc["cruiseSpeed"];
     if (doc["minSatellites"].is<int>())     cfg.minSatellites   = doc["minSatellites"];

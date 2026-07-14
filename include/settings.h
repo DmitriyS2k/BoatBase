@@ -6,6 +6,7 @@ struct BoatSettings {
     float pidKp         = 3.0f;   // P: исправляет ошибку сейчас
     float pidKi         = 1.5f;   // I: накопленная ошибка
     float pidKd         = 0.5f;   // D: производная (демпфирование)
+    float pidCurve      = 1.0f;   // нелинейность выхода PID: 1.0=линейно, >1=мягче у центра/жёстче у краёв
     float arrivalRadius = 3.0f;   // метры — считать «прибыл»
     int   cruiseSpeed   = 1650;   // PWM тяга в авто-режиме (1500..1900)
     int   minSatellites = 5;      // минимум спутников

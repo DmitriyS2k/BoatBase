@@ -8,8 +8,8 @@ static Preferences prefs;
 void settingsLoad() {
     prefs.begin("boat", true);
     cfg.pidKp          = prefs.getFloat("pidKp",    3.0f);
-    cfg.pidKi          = prefs.getFloat("pidKi",    7.6f);
-    cfg.pidKd          = prefs.getFloat("pidKd",    0.2f);
+    cfg.pidKi          = prefs.getFloat("pidKi",    1.5f);
+    cfg.pidKd          = prefs.getFloat("pidKd",    0.5f);
     cfg.pidCurve       = prefs.getFloat("pidCurve", 1.0f);
     cfg.arrivalRadius  = prefs.getFloat("aRadius",  3.0f);
     cfg.cruiseSpeed    = prefs.getInt  ("cSpeed",   1650);

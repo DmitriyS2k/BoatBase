@@ -20,6 +20,7 @@ void settingsLoad() {
     cfg.cruiseGain     = prefs.getFloat("cruGain",  0.8f);
     cfg.maxDiff        = prefs.getInt("maxDiff",    150);
     cfg.bearingAlpha   = prefs.getFloat("brAlpha",  0.15f);
+    cfg.navInterval    = prefs.getInt("navInt",     200);
     cfg.compassDecl    = prefs.getFloat("cDecl",    0.0f);
     cfg.compassXOffset = prefs.getFloat("cXOff",    0.0f);
     cfg.compassYOffset = prefs.getFloat("cYOff",    0.0f);
@@ -54,6 +55,7 @@ void settingsSave() {
     prefs.putFloat("cruGain", cfg.cruiseGain);
     prefs.putInt("maxDiff",   cfg.maxDiff);
     prefs.putFloat("brAlpha", cfg.bearingAlpha);
+    prefs.putInt("navInt",    cfg.navInterval);
     prefs.putFloat("cDecl",   cfg.compassDecl);
     prefs.putFloat("cXOff",   cfg.compassXOffset);
     prefs.putFloat("cYOff",   cfg.compassYOffset);

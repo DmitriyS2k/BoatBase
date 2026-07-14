@@ -16,6 +16,12 @@ static void gpsReinit() {
     Serial.println("[GPS] Watchdog: reinit UART");
 }
 
+void gpsReset() {
+    // Холодный старт — сброс NVRAM модуля (координаты, время, эфемериды)
+    GPSSerial.print("$PMTK104*37\r\n");
+    Serial.println("[GPS] Cold reset sent");
+}
+
 void gpsUpdate() {
     while (GPSSerial.available())
         gps.encode(GPSSerial.read());

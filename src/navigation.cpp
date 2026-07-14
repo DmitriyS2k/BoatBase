@@ -41,6 +41,8 @@ static float headingError(float target, float current) {
 // (текущий_курс, целевой_курс, kp, ki, kd, dt_sec, min, max)
 static float pidIntegral = 0.0f;
 static float pidPrevErr  = 0.0f;
+static float smoothPid   = 0.0f;
+static float smoothBearingG = -1.0f;
 
 static int computePID(float currentHeading, float targetHeading,
                       float kp, float ki, float kd,
@@ -62,6 +64,7 @@ static int computePID(float currentHeading, float targetHeading,
 void navigationReset() {
     pidIntegral = 0.0f;
     pidPrevErr  = 0.0f;
+    smoothPid = 0.0f;
     // smoothBearing сбросится в navigationStep при следующем старте
 }
 
@@ -127,24 +130,29 @@ MotorOut navigationStep(int speedLimit) {
         maxSpeed = (int)(slowMin + (topSpeed - slowMin) * factor);
     }
 
-    // PID: dt = 0.1 сек (вызывается каждые 100мс)
-    // Диапазон выхода: -(maxSpeed-1500) .. +(maxSpeed-1500)
+    // PID: dt соответствует navInterval
+    float dt = cfg.navInterval / 1000.0f;
     int halfRange = maxSpeed - 1500;
-    int pidOut = computePID(boat.heading, bearing,
+    int pidRaw = computePID(boat.heading, bearing,
                             cfg.pidKp, cfg.pidKi, cfg.pidKd,
-                            0.1f, -halfRange, halfRange);
+                            dt, -halfRange, halfRange);
 
-    // pidOut > 0 → нужно повернуть налево → притормозить правый мотор (как в Katerok)
+    // Сглаживание выхода PID — убирает резкие скачки моторов
+    // alpha=0.3: новое значение на 30%, старое на 70% → плавные изменения
+    smoothPid = smoothPid * 0.7f + (float)pidRaw * 0.3f;
+    int pidOut = constrain((int)smoothPid, -halfRange, halfRange);
+    pidOut = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
+
+    // pidOut > 0 → нужно повернуть налево → притормозить правый мотор
     // pidOut < 0 → нужно повернуть направо → притормозить левый мотор
-    int left  = maxSpeed;
-    int right = maxSpeed;
-
+    // Центрирование тяги — как в круизе:
+    // оба мотора симметрично относительно maxSpeed
+    // один прибавляет, другой убавляет на одинаковую величину
     int pidClamped = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
-    if (pidClamped > 0) {
-        right = maxSpeed - pidClamped;  // притормозить правый → поворот налево
-    } else if (pidClamped < 0) {
-        left  = maxSpeed + pidClamped;  // притормозить левый  → поворот направо
-    }
+    int absPid = abs(pidClamped);
+    int centeredSpeed = constrain(maxSpeed, 1000, 2000 - absPid);
+    int left  = constrain(centeredSpeed + pidClamped, 1000, 2000);
+    int right = constrain(centeredSpeed - pidClamped, 1000, 2000);
 
     left  = constrain(left,  1000, 2000);
     right = constrain(right, 1000, 2000);

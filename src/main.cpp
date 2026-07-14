@@ -103,7 +103,7 @@ void loop() {
                 logEvent("RC lost — auto-return HOME");
             }
             static uint32_t navTimer = 0;
-            if (millis() - navTimer >= 100) {
+            if (millis() - navTimer >= (uint32_t)cfg.navInterval) {
                 navTimer = millis();
                 MotorOut m = navigationStep(boat.speedLimitPwm);
                 motorsWrite(m.left, m.right);
@@ -230,10 +230,8 @@ void loop() {
                 warnDelay = millis();
                 logEvent("WP save rejected: hdop=%.1f sat=%d fix=%d",
                          boat.hdop, boat.satellites, boat.gpsFix);
-                if (!boat.beepNoGps.active) {
-                    boat.beepNoGps.active  = true;
-                    boat.beepNoGps.startMs = millis();
-                }
+                boat.beepNoGps.active  = true;
+                boat.beepNoGps.startMs = millis();
             }
         }
         return;
@@ -299,7 +297,7 @@ void loop() {
 
         if (boat.navigating) {
             static uint32_t navTimer = 0;
-            if (millis() - navTimer >= 100) {
+            if (millis() - navTimer >= (uint32_t)cfg.navInterval) {
                 navTimer = millis();
                 MotorOut m = navigationStep(boat.speedLimitPwm);
                 motorsWrite(m.left, m.right);

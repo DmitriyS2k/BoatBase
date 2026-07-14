@@ -185,6 +185,7 @@ function tmplDash() {
   <div class="row"><span>Широта</span><span id="d-lat">—</span></div>
   <div class="row"><span>Долгота</span><span id="d-lon">—</span></div>
   <div class="row"><span>Скорость</span><span id="d-speed">—</span></div>
+  <button onclick="gpsReset()" style="margin-top:8px;background:#ef4444">Сбросить GPS (холодный старт)</button>
 </div>
 <div class="card">
   <h2>Мотор</h2>
@@ -278,6 +279,10 @@ function tmplHelp() {
   <div class="help-param">
     <div class="help-pname">Макс. разница моторов (maxDiff) — старт 150</div>
     <div class="help-pdesc">Ограничивает насколько сильно автопилот может отклонить один мотор от другого. <b>Мало (50-100)</b> — плавные повороты, широкая дуга захода на точку, меньше рыскания. <b>Много (250-350)</b> — крутые повороты, заход на точку прямее. Начни с 150, увеличивай если идёт слишком широкой дугой.</div>
+  </div>
+  <div class="help-param">
+    <div class="help-pname">Период коррекции курса (navInterval) — старт 200мс</div>
+    <div class="help-pdesc">Как часто автопилот пересчитывает и корректирует курс. <b>100мс</b> — часто, быстрая реакция но больше рывков. <b>300-500мс</b> — реже, плавнее, меньше рывков но медленнее реагирует на отклонение. Если рывки есть даже при малом maxDiff — увеличь до 300-400мс.</div>
   </div>
   <div class="help-param">
     <div class="help-pname">Сглаживание курса на точку (bearingAlpha) — старт 0.15</div>
@@ -379,6 +384,8 @@ function tmplSettings() {
   <input type="range" id="maxDiff" min="10" max="400" step="5" value="150">
   <div class="row"><span>Сглаживание курса на точку (bearingAlpha)</span><span id="baVal">0.15</span></div>
   <input type="range" id="bearingAlpha" min="0.05" max="1.0" step="0.05" value="0.15">
+  <div class="row"><span>Период коррекции курса (navInterval, мс)</span><span id="niVal">200</span></div>
+  <input type="range" id="navInterval" min="100" max="1000" step="50" value="200">
 
   <button class="btn btn-blue" onclick="saveSettings()">💾 Сохранить</button>
 </div>
@@ -499,6 +506,7 @@ function loadSettings() {
       set('cruiseGain',   d.cruiseGain);
       set('maxDiff',      d.maxDiff ?? 150);
       set('bearingAlpha', d.bearingAlpha ?? 0.15);
+      set('navInterval',  d.navInterval ?? 200);
       set('cruiseSpeed',  d.cruiseSpeed);
       set('slowdownDist', d.slowdownDist ?? 5);
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
@@ -511,7 +519,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','cruiseGain','maxDiff','bearingAlpha','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','cruiseGain','maxDiff','bearingAlpha','navInterval','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -528,6 +536,7 @@ function updRangeLabels() {
   bind('cruiseGain','crgVal',1);
   bind('maxDiff','mdVal',0);
   bind('bearingAlpha','baVal',2);
+  bind('navInterval','niVal',0);
 
   // Trim ползунки
   const tl = parseInt(document.getElementById('trimLeft')?.value  || 0);
@@ -550,6 +559,7 @@ function saveSettings() {
     pidKp:         parseFloat(get('pidKp')),
     maxDiff:       parseInt(get('maxDiff')),
     bearingAlpha:  parseFloat(get('bearingAlpha')),
+    navInterval:   parseInt(get('navInterval')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
     cruiseGain:    parseFloat(get('cruiseGain')),
@@ -798,3 +808,11 @@ function otaUpload() {
   xhr.send(fd);
 }
 
+
+function gpsReset() {
+  if (!confirm('Сбросить GPS модуль? Координаты Лимы уйдут, но поиск спутников займёт 1-2 минуты.')) return;
+  fetch('/api/gpsreset', {method:'POST'})
+    .then(r => r.text())
+    .then(() => alert('GPS сброшен — подожди 1-2 минуты для поиска спутников'))
+    .catch(() => alert('Ошибка'));
+}

@@ -79,6 +79,7 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["cruiseGain"]      = cfg.cruiseGain;
     doc["maxDiff"]         = cfg.maxDiff;
     doc["bearingAlpha"]    = cfg.bearingAlpha;
+    doc["navInterval"]     = cfg.navInterval;
     doc["compassDecl"]     = cfg.compassDecl;
     doc["compassAxis"]     = cfg.compassAxis;
     doc["compassDeadzone"] = cfg.compassDeadzone;
@@ -108,6 +109,7 @@ static void handlePostSettings(AsyncWebServerRequest *req, uint8_t *data,
     if (doc["cruiseGain"].is<float>())      cfg.cruiseGain      = doc["cruiseGain"];
     if (doc["maxDiff"].is<int>())           cfg.maxDiff         = doc["maxDiff"];
     if (doc["bearingAlpha"].is<float>())    cfg.bearingAlpha    = doc["bearingAlpha"];
+    if (doc["navInterval"].is<int>())       cfg.navInterval     = doc["navInterval"];
     if (doc["compassDecl"].is<float>())     cfg.compassDecl     = doc["compassDecl"];
     if (doc["compassAxis"].is<int>())       cfg.compassAxis     = doc["compassAxis"];
     if (doc["compassDeadzone"].is<float>()) cfg.compassDeadzone = doc["compassDeadzone"];
@@ -177,6 +179,11 @@ void webInit() {
     server.on("/api/settings",  HTTP_POST,
         [](AsyncWebServerRequest *req){}, nullptr, handlePostSettings);
     server.on("/api/calibrate", HTTP_POST, handleCalibrate);
+    server.on("/api/gpsreset", HTTP_POST, [](AsyncWebServerRequest *req) {
+        extern void gpsReset();
+        gpsReset();
+        req->send(200, "text/plain", "OK");
+    });
     server.on("/api/log",       HTTP_GET,  handleGetLog);
     server.on("/api/joystick",  HTTP_POST,
         [](AsyncWebServerRequest *req){}, nullptr, handleJoystick);

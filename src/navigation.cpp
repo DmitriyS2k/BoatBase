@@ -2,6 +2,7 @@
 #include <math.h>
 #include "state.h"
 #include "settings.h"
+#include "eventlog.h"
 
 // ── Геодезия (Haversine) ────────────────────────────────────────
 static float toRad(float deg) { return deg * M_PI / 180.0f; }
@@ -106,10 +107,8 @@ MotorOut navigationStep(int speedLimit) {
     // Приплыли (< 1м — стоп как в Katerok, без ожидания нуля)
     if (dist < cfg.arrivalRadius) {
         boat.navigating    = false;
-        boat.beepArrived.active  = true;
-        boat.beepArrived.startMs = millis();
         navigationReset();
-        Serial.printf("Arrived at WP %d!\n", boat.wpTarget);
+        logEvent("Arrived at WP%d!", boat.wpTarget);
         return {1500, 1500};
     }
 

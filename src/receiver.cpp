@@ -13,34 +13,11 @@
 //  2  RPM   — выбранная точка: 0..3
 //  3  RPM   — спутники GPS (0..30)
 //  4  RPM   — дистанция до точки (м): в AUTO→к цели, иначе→к дому
-//  5  RPM   — скорость км/ч × 10  (т.е. 12.3 км/ч → 123)
-//  6  TEMP  — звук A: сохранение точки / GPS нашёл ≥5 спутников
-//  7  TEMP  — звук B: ошибка сохранения (нет GPS) — два быстрых пика
-//  8  TEMP  — звук C: прибытие на точку
-//
-// Настройка тревог на пульте (OpenI6X → Telemetry → Sensor → Alarm):
-//   Сенсор 6 Alarm: > 100°C  (value > 1400) — тональность A
-//   Сенсор 7 Alarm: > 100°C  (value > 1400) — тональность B (другой звук)
-//   Сенсор 8 Alarm: > 100°C  (value > 1400) — тональность C (другой звук)
-//
-// Значение в норме: 400 (= 0°C в формате TEMP: (celsius+40)*10)
-// Значение тревоги: 1900 (= 150°C) — выше любого разумного порога
-//
-// «Два пика» (beepNoGps): чередуем 1900 / 400 / 1900 по ~220мс каждый.
 
 #define IBUS_SERVO_RX_PIN  4
 #define IBUS_SENS_RX_PIN   32
 #define IBUS_SENS_TX_PIN   33
 #define RC_TIMEOUT_MS      500
-
-// TEMP формат: value = (celsius + 40) * 10
-// 0°C (норма) → 400, 150°C (тревога) → 1900
-// Длительности звуков
-#define BEEP_SAVED_MS    800   // сохранение точки — короткий
-#define BEEP_GPSFIX_MS   600   // GPS нашёл спутники — короткий
-#define BEEP_ARRIVED_MS  1200  // прибытие — длинный
-// «Два пика»: пик-пауза-пик, итого ~660мс
-#define BEEP_NOGPS_PULSE_MS  220  // длина одного пика/паузы
 
 IBusBM ibusServo;
 IBusBM ibusSensor;
@@ -51,7 +28,6 @@ static uint8_t sensMode;     // 1: режим
 static uint8_t sensWp;       // 2: выбранная точка
 static uint8_t sensSats;     // 3: спутники
 static uint8_t sensDist;     // 4: дистанция
-static uint8_t sensEvent;    // 5: событие (0=тихо, 1=сохранено/GPS, 2=нет GPS, 3=прибытие)
 
 // ── Вспомогательная функция: обновить один TEMP-сенсор-звук ────
 void receiverInit() {
@@ -75,7 +51,6 @@ void receiverInit() {
     sensWp    = ibusSensor.addSensor(IBUSS_RPM);   // 2: точка    (inst2)
     sensSats  = ibusSensor.addSensor(IBUSS_RPM);   // 3: спутники (inst3)
     sensDist  = ibusSensor.addSensor(IBUSS_RPM);   // 4: дистанция(inst4)
-    sensEvent = ibusSensor.addSensor(IBUSS_RPM);   // 5: событие  (inst5)
 }
 
 void receiverUpdate() {
@@ -135,41 +110,6 @@ void receiverUpdate() {
         dist = (uint16_t)constrain((int)(6371000.0f * 2.0f * atan2f(sqrtf(a), sqrtf(1-a))), 0, 9999);
     }
     ibusSensor.setSensorMeasurement(sensDist, dist);
-
-    // ── Сенсор 5: скорость км/ч × 10 ────────────────────────────
-    // Умножаем на 10 чтобы показывать одно знаковое место (12.3 → 123)
-    // OpenI6X RPM сенсор: делитель настраивается на пульте, ставь /10
-    // ── Сенсор 6: событие (RPM) ──────────────────────────────────
-    // 0 = тихо, 1 = сохранено/GPS fix, 2 = нет GPS, 3 = прибытие
-    // Приоритет: прибытие > ошибка > успех
-    // Сбрасываем флаги после истечения времени
-    static uint16_t eventVal = 0;
-    static uint32_t eventEnd = 0;
-    uint32_t now = millis();
-
-    if (now < eventEnd) {
-        // событие ещё активно — держим значение
-    } else if (boat.beepArrived.active) {
-        eventVal = 3;
-        eventEnd = now + 3000;  // 3 сек — пульт точно успеет опросить
-        boat.beepArrived.active = false;
-    } else if (boat.beepNoGps.active) {
-        eventVal = 2;
-        eventEnd = now + 3000;
-        boat.beepNoGps.active = false;
-    } else if (boat.beepSaved.active) {
-        eventVal = 1;
-        eventEnd = now + 3000;
-        boat.beepSaved.active = false;
-    } else if (boat.beepGpsFix.active) {
-        eventVal = 1;
-        eventEnd = now + 3000;
-        boat.beepGpsFix.active = false;
-    } else {
-        eventVal = 0;
-    }
-    ibusSensor.setSensorMeasurement(sensEvent, eventVal);
-
 }
 
 int rcNorm(int ch_idx) {

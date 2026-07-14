@@ -13,29 +13,6 @@ struct Waypoint {
     bool   valid = false;
 };
 
-// ── Звуковые события (receiver.cpp → iBUS TEMP сенсоры 6/7/8) ──
-// Каждый флаг выставляется снаружи (main.cpp, navigation.cpp).
-// receiver.cpp сам сбрасывает флаг после истечения beepMs.
-//
-// Сенсор 6 (TEMP A) — успешные события:
-//   beepSaved   → сохранена точка      → порог тревоги на пульте: например 50°C
-//   beepGpsFix  → спутников стало ≥5   → то же значение, тот же сенсор
-//
-// Сенсор 7 (TEMP B) — ошибка сохранения (нет GPS):
-//   beepNoGps   → два коротких пика    → другой порог / другой звук
-//
-// Сенсор 8 (TEMP C) — прибытие на точку:
-//   beepArrived → длинный пик          → ещё один звук
-//
-// Значения в норме: 0 (0°C после смещения -40°C → реально -40, но пульт показывает 0).
-// При событии: BEEP_ALARM (150°C, value=1900) на BEEP_DURATION_MS.
-// «Два пика» для beepNoGps: чередуем 1900/0/1900 по 250мс — делаем в receiverUpdate().
-
-struct BeepState {
-    bool     active = false;
-    uint32_t startMs = 0;
-};
-
 struct BoatState {
     // GPS
     bool     gpsActive   = false;
@@ -67,13 +44,6 @@ struct BoatState {
     float    distToSelected = 0.0f;   // до wpSelected (выбрана ch5)
     bool     navigating     = false;
     int      wpTarget       = 0;
-
-    // ── Звуки ──────────────────────────────────────────────────
-    // Выставляй .active = true снаружи. receiver.cpp сам сбросит.
-    BeepState beepSaved;    // сенсор 6: точка сохранена (успех)
-    BeepState beepGpsFix;   // сенсор 6: GPS нашёл ≥5 спутников
-    BeepState beepNoGps;    // сенсор 7: попытка сохранить без GPS
-    BeepState beepArrived;  // сенсор 8: прибытие на точку
 
     // Лимит скорости AUTO по крутилке ch6
     int      speedLimitPwm = 1900;

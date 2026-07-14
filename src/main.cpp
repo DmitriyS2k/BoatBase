@@ -26,7 +26,6 @@ static BoatMode modeFromCh9(uint16_t v) {
 static BoatMode prevMode       = MODE_MANUAL;
 static int      prevWpSel      = -1;
 static bool     prevRc         = false;
-static bool     prevNav        = false;
 static bool     prevGpsFix     = false;
 static bool     rcEverConnected = false;  // пульт хотя бы раз подключался
 
@@ -75,11 +74,6 @@ void loop() {
         prevGpsFix = boat.gpsFix;
         logEvent(boat.gpsFix ? "GPS fix OK (%d sats)" : "GPS fix LOST (%d sats)",
                  boat.satellites);
-        // Звук когда GPS готов к AUTO режиму
-        if (boat.gpsFix && boat.satellites >= cfg.minSatellites) {
-            boat.beepGpsFix.active  = true;
-            boat.beepGpsFix.startMs = millis();
-        }
     }
 
     // ── Потеря пульта ────────────────────────────────────────────
@@ -217,8 +211,6 @@ void loop() {
                 wp.lon   = boat.longitude;
                 wp.valid = true;
                 waypointSave(boat.wpSelected);
-                boat.beepSaved.active  = true;
-                boat.beepSaved.startMs = millis();
                 logEvent("WP%d saved: %.5f, %.5f (hdop=%.1f sat=%d)",
                          boat.wpSelected, wp.lat, wp.lon,
                          boat.hdop, boat.satellites);
@@ -230,8 +222,6 @@ void loop() {
                 warnDelay = millis();
                 logEvent("WP save rejected: hdop=%.1f sat=%d fix=%d",
                          boat.hdop, boat.satellites, boat.gpsFix);
-                boat.beepNoGps.active  = true;
-                boat.beepNoGps.startMs = millis();
             }
         }
         return;
@@ -288,12 +278,6 @@ void loop() {
         } else {
             boat.distToSelected = 0;
         }
-
-        // Логируем прибытие
-        if (boat.beepArrived.active && !prevNav) {
-            logEvent("Arrived at WP%d!", boat.wpTarget);
-        }
-        prevNav = boat.navigating;
 
         if (boat.navigating) {
             static uint32_t navTimer = 0;

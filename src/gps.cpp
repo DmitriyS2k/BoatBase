@@ -18,9 +18,15 @@ static void gpsReinit() {
 }
 
 void gpsReset() {
-    // Холодный старт — сброс NVRAM модуля (координаты, время, эфемериды)
-    GPSSerial.print("$PMTK104*37\r\n");
-    Serial.println("[GPS] Cold reset sent");
+    // NEO-6M — чип u-blox, $PMTK (MediaTek) он не понимает, поэтому нужен
+    // бинарный UBX-CFG-RST (класс 0x06, ID 0x04):
+    //   navBbrMask=0xFFFF — стереть эфемериды/альманах/позицию/время (холодный старт)
+    //   resetMode=0x02    — мягкий рестарт только GNSS-движка, без сброса UART/чипа
+    static const uint8_t UBX_COLD_START[] = {
+        0xB5, 0x62, 0x06, 0x04, 0x04, 0x00, 0xFF, 0xFF, 0x02, 0x00, 0x0E, 0x61
+    };
+    GPSSerial.write(UBX_COLD_START, sizeof(UBX_COLD_START));
+    Serial.println("[GPS] UBX cold reset sent (NEO-6M)");
 }
 
 void gpsUpdate() {

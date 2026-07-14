@@ -43,7 +43,7 @@ function buildPage() {
     case 'ota':      pg.innerHTML = tmplOta();      break;
     case 'joystick': pg.innerHTML = tmplJoystick(); initJoystick(); break;
     case 'nav':      pg.innerHTML = tmplNav();      break;
-    case 'log':      pg.innerHTML = tmplLog();      loadLog();  break;
+    case 'log':      pg.innerHTML = tmplLog();      loadLog(); loadNavLogStatus(); break;
     case 'settings': pg.innerHTML = tmplSettings(); loadSettings(); break;
     case 'help':     pg.innerHTML = tmplHelp();     break;
     case 'debug':    pg.innerHTML = tmplDebug();    break;
@@ -731,7 +731,32 @@ function tmplLog() {
     <button class="btn btn-blue" style="padding:4px 12px;font-size:.8rem" onclick="loadLog()">↻ Обновить</button>
   </div>
   <div id="logList" style="font-size:.78rem;font-family:monospace;line-height:1.7;color:var(--text-secondary)">Загрузка...</div>
+</div>
+<div class="card">
+  <h2>Лог навигации AUTO (CSV)</h2>
+  <p style="font-size:.8rem;color:#64748b;margin:0 0 10px">
+    Пишется автоматически, пока корабль реально едет в AUTO (включая авто-возврат домой при потере пульта):
+    курс, ошибка, стадии PID, PWM моторов, GPS-трек. Кольцевой буфер — старые записи затираются новыми.
+  </p>
+  <div class="row"><span>Записей в буфере</span><span id="nl-count">—</span></div>
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <a class="btn btn-blue" href="/api/navlog.csv" download="navlog.csv" style="flex:1;text-align:center;text-decoration:none">⬇ Скачать CSV</a>
+    <button class="btn" style="flex:1;background:#ef4444" onclick="clearNavLog()">🗑 Очистить</button>
+  </div>
 </div>`;
+}
+
+function loadNavLogStatus() {
+  fetch('/api/navlog/status')
+    .then(r=>r.json())
+    .then(d=>setText('nl-count', (d.count ?? 0) + ' / ' + (d.capacity ?? 0)))
+    .catch(()=>setText('nl-count','—'));
+}
+function clearNavLog() {
+  if (!confirm('Очистить лог навигации AUTO?')) return;
+  fetch('/api/navlog/clear', {method:'POST'})
+    .then(()=>loadNavLogStatus())
+    .catch(()=>alert('Ошибка'));
 }
 
 function loadLog() {

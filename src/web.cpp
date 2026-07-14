@@ -8,6 +8,7 @@
 #include "compass.h"
 #include "motors.h"
 #include "eventlog.h"
+#include "navlog.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket  ws("/ws");
@@ -187,6 +188,26 @@ void webInit() {
         req->send(200, "text/plain", "OK");
     });
     server.on("/api/log",       HTTP_GET,  handleGetLog);
+
+    // ── Лог навигации AUTO (для анализа/отладки на компьютере) ──
+    server.on("/api/navlog/status", HTTP_GET, [](AsyncWebServerRequest *req) {
+        JsonDocument doc;
+        doc["count"]    = navLogCount();
+        doc["capacity"] = navLogCapacity();
+        String json;
+        serializeJson(doc, json);
+        req->send(200, "application/json", json);
+    });
+    server.on("/api/navlog/clear", HTTP_POST, [](AsyncWebServerRequest *req) {
+        navLogClear();
+        req->send(200, "text/plain", "OK");
+    });
+    server.on("/api/navlog.csv", HTTP_GET, [](AsyncWebServerRequest *req) {
+        navLogFillReset();
+        AsyncWebServerResponse *resp = req->beginChunkedResponse("text/csv", navLogFillCsv);
+        resp->addHeader("Content-Disposition", "attachment; filename=navlog.csv");
+        req->send(resp);
+    });
     server.on("/api/joystick",  HTTP_POST,
         [](AsyncWebServerRequest *req){}, nullptr, handleJoystick);
 

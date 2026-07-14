@@ -3,6 +3,7 @@
 #include "state.h"
 #include "settings.h"
 #include "eventlog.h"
+#include "navlog.h"
 
 // ── Геодезия (Haversine) ────────────────────────────────────────
 static float toRad(float deg) { return deg * M_PI / 180.0f; }
@@ -173,6 +174,13 @@ MotorOut navigationStep(int speedLimit) {
 
     left  = constrain(left,  1000, 2000);
     right = constrain(right, 1000, 2000);
+
+    // Лог для анализа/отладки — та же ошибка курса, что видел PID
+    float err = headingError(bearing, boat.heading);
+    navLogRecord(boat.latitude, boat.longitude, boat.heading, bearing, err,
+                 (float)pidRaw, pidCurved, (float)pidOut,
+                 left, right, dist, boat.speed,
+                 boat.satellites, boat.hdop, boat.wpTarget);
 
     return {left, right};
 }

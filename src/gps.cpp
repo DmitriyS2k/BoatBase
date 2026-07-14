@@ -47,10 +47,19 @@ void gpsUpdate() {
         lastCheck = millis();
     }
 
-    boat.satellites = gps.satellites.isValid() ? gps.satellites.value() : 0;
-    boat.hdop       = gps.hdop.isValid()       ? gps.hdop.hdop()        : 99.0f;
+    // ВАЖНО: isValid() значит «хоть раз распарсилось с момента загрузки»,
+    // а НЕ «данные свежие». Без проверки age() модуль, единожды поймавший
+    // фикс, будет вечно показывать те же координаты/спутники даже если
+    // сигнал давно пропал или модуль завис/отключился.
+    #define GPS_MAX_AGE_MS 2000
+    bool satFresh = gps.satellites.isValid() && gps.satellites.age() < GPS_MAX_AGE_MS;
+    bool hdopFresh = gps.hdop.isValid()      && gps.hdop.age()      < GPS_MAX_AGE_MS;
+    bool locFresh  = gps.location.isValid()  && gps.location.age()  < GPS_MAX_AGE_MS;
 
-    bool goodFix = gps.location.isValid()
+    boat.satellites = satFresh  ? gps.satellites.value() : 0;
+    boat.hdop       = hdopFresh ? gps.hdop.hdop()         : 99.0f;
+
+    bool goodFix = locFresh
                 && boat.hdop < 5.0f
                 && boat.satellites >= 3;
 

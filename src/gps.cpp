@@ -1,18 +1,19 @@
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
 #include "state.h"
+#include "gps.h"
 
 TinyGPSPlus gps;
 HardwareSerial GPSSerial(1);
 
 void gpsInit() {
-    GPSSerial.begin(9600, SERIAL_8N1, 16, -1);
+    GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 }
 
 static void gpsReinit() {
     GPSSerial.end();
     delay(100);
-    GPSSerial.begin(9600, SERIAL_8N1, 16, -1);
+    GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
     Serial.println("[GPS] Watchdog: reinit UART");
 }
 

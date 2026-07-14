@@ -2,10 +2,11 @@
 #include <IBusBM.h>
 #include <HardwareSerial.h>
 #include "state.h"
+#include "gps.h"
 
 // ── Распределение UART ──────────────────────────────────────────
 // UART0 (Serial0) : USB отладка + iBUS сенсор (GPIO32/33)
-// UART1           : GPS модуль RX=GPIO16
+// UART1           : GPS модуль RX=GPIO16, TX=GPIO17
 // UART2           : iBUS каналы RX=GPIO4
 //
 // ── Сенсоры телеметрии (OpenI6X) ───────────────────────────────
@@ -42,7 +43,7 @@ void receiverInit() {
     extern HardwareSerial GPSSerial;
     GPSSerial.end();
     delay(10);
-    GPSSerial.begin(9600, SERIAL_8N1, 16, -1);
+    GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 
     // IBusBM нумерует первый сенсор с индекса 0, но пульт показывает inst начиная с 1.
     // Instance 0 пульт игнорирует — добавляем заглушку чтобы сдвинуть нумерацию.

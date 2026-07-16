@@ -41,10 +41,10 @@ static float headingError(float target, float current) {
 
 // ── PID-регулятор (адаптирован из Katerok) ──────────────────────
 // (текущий_курс, целевой_курс, kp, ki, kd, dt_sec, min, max)
-static float pidIntegral = 0.0f;
-static float pidPrevErr  = 0.0f;
-static float smoothPid   = 0.0f;
-static float smoothBearingG = -1.0f;
+static float pidIntegral   = 0.0f;
+static float pidPrevErr    = 0.0f;
+static float smoothPid     = 0.0f;
+static float smoothBearing = -1.0f;  // курс на точку, сглаженный bearingAlpha
 
 static int computePID(float currentHeading, float targetHeading,
                       float kp, float ki, float kd,
@@ -79,10 +79,11 @@ static float applyPidCurve(float val, float range, float curve) {
 
 // Сброс PID при начале новой навигации
 void navigationReset() {
-    pidIntegral = 0.0f;
-    pidPrevErr  = 0.0f;
-    smoothPid = 0.0f;
-    // smoothBearing сбросится в navigationStep при следующем старте
+    pidIntegral   = 0.0f;
+    pidPrevErr    = 0.0f;
+    smoothPid     = 0.0f;
+    smoothBearing = -1.0f;  // забыть курс на предыдущую точку — иначе первые
+                             // секунды новой ноги гонимся за старой целью
 }
 
 // ── Структура выхода моторов ─────────────────────────────────────
@@ -116,7 +117,6 @@ MotorOut navigationStep(int speedLimit) {
     float rawBearing = geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
     // Сглаживаем bearing фильтром низких частот (alpha=0.1) чтобы убрать GPS шум
     // Без фильтра GPS прыжки на 1-3м меняют bearing на несколько градусов → рывки
-    static float smoothBearing = -1.0f;
     if (smoothBearing < 0.0f) {
         smoothBearing = rawBearing;  // первый цикл — без фильтра
     } else {

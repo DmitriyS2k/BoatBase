@@ -1,10 +1,11 @@
 #include "navlog.h"
 #include "settings.h"
 
-// ~1000 записей: при navInterval=200мс это ~3.3 мин активной навигации,
-// при 500мс — ~8 мин. Хватает на один заплыв к точке и обратно.
-// sizeof(NavLogEntry) ~72 байта → буфер ~72КБ RAM (свободно ~270КБ).
-#define NAVLOG_SIZE 1000
+// Размер буфера настраивается на лету (см. navLogSetCapacity, /api/navlog/capacity).
+// sizeof(NavLogEntry) ~72 байта: 1000 записей ~72КБ, 2000 ~144КБ в куче.
+// При navInterval=200мс 1000 записей ~3.3 мин активной навигации.
+#define NAVLOG_DEFAULT_CAPACITY 1000
+#define NAVLOG_MAX_CAPACITY     2000
 
 struct NavLogEntry {
     uint32_t t;              // millis()
@@ -24,14 +25,35 @@ struct NavLogEntry {
     uint8_t  wpTarget;
 };
 
-static NavLogEntry buf[NAVLOG_SIZE];
-static int head  = 0;   // следующий слот для записи
-static int count = 0;   // сколько записей валидно (насыщается на NAVLOG_SIZE)
+static NavLogEntry *buf      = nullptr;
+static int          capacity = 0;
+static int          head     = 0;   // следующий слот для записи
+static int          count    = 0;   // сколько записей валидно (насыщается на capacity)
+
+static void navLogEnsureAlloc() {
+    if (!buf) {
+        capacity = NAVLOG_DEFAULT_CAPACITY;
+        buf = new NavLogEntry[capacity];
+    }
+}
+
+// Пересоздаёт буфер под новый размер — старые записи теряются (это ОК,
+// вызывается на воде вручную между заездами, не во время активного лога).
+void navLogSetCapacity(int newCapacity) {
+    newCapacity = constrain(newCapacity, 100, NAVLOG_MAX_CAPACITY);
+    NavLogEntry *newBuf = new NavLogEntry[newCapacity];
+    delete[] buf;
+    buf      = newBuf;
+    capacity = newCapacity;
+    head     = 0;
+    count    = 0;
+}
 
 void navLogRecord(double lat, double lon, float heading, float targetHeading, float err,
                    float pidRaw, float pidCurved, float pidFinal,
                    int motorLeft, int motorRight, float dist, float speedKmh,
                    int sats, float hdop, int wpTarget) {
+    navLogEnsureAlloc();
     NavLogEntry &e = buf[head];
     e.t             = millis();
     e.lat           = lat;
@@ -50,13 +72,13 @@ void navLogRecord(double lat, double lon, float heading, float targetHeading, fl
     e.sats          = (uint8_t)sats;
     e.wpTarget      = (uint8_t)wpTarget;
 
-    head = (head + 1) % NAVLOG_SIZE;
-    if (count < NAVLOG_SIZE) count++;
+    head = (head + 1) % capacity;
+    if (count < capacity) count++;
 }
 
 void navLogClear() { head = 0; count = 0; }
 int  navLogCount()    { return count; }
-int  navLogCapacity() { return NAVLOG_SIZE; }
+int  navLogCapacity() { navLogEnsureAlloc(); return capacity; }
 
 // ── Потоковая генерация CSV ─────────────────────────────────────
 // Курсор — глобальное состояние, рассчитано на одно скачивание за раз
@@ -100,7 +122,7 @@ size_t navLogFillCsv(uint8_t *buffer, size_t maxLen, size_t /*index*/) {
                 fillHeaderSent = true;
             } else if (fillIdx < fillSnapCount) {
                 // Записи хранятся по кругу — идём от самой старой к новой
-                int real = (fillSnapHead - fillSnapCount + fillIdx + NAVLOG_SIZE) % NAVLOG_SIZE;
+                int real = (fillSnapHead - fillSnapCount + fillIdx + capacity) % capacity;
                 NavLogEntry &e = buf[real];
                 char line[160];
                 snprintf(line, sizeof(line),

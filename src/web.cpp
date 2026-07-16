@@ -202,6 +202,18 @@ void webInit() {
         navLogClear();
         req->send(200, "text/plain", "OK");
     });
+    server.on("/api/navlog/capacity", HTTP_POST,
+        [](AsyncWebServerRequest *req){}, nullptr,
+        [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len) != DeserializationError::Ok) {
+                req->send(400, "application/json", "{\"error\":\"bad json\"}");
+                return;
+            }
+            int cap = doc["capacity"] | 1000;
+            navLogSetCapacity(cap);
+            req->send(200, "application/json", "{\"ok\":true}");
+        });
     server.on("/api/navlog.csv", HTTP_GET, [](AsyncWebServerRequest *req) {
         navLogFillReset();
         AsyncWebServerResponse *resp = req->beginChunkedResponse("text/csv", navLogFillCsv);

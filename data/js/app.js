@@ -739,6 +739,18 @@ function tmplLog() {
     курс, ошибка, стадии PID, PWM моторов, GPS-трек. Кольцевой буфер — старые записи затираются новыми.
   </p>
   <div class="row"><span>Записей в буфере</span><span id="nl-count">—</span></div>
+
+  <label style="margin-top:10px">Размер буфера</label>
+  <div style="display:flex;gap:8px;margin-bottom:4px">
+    <select id="nl-capacity" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary)">
+      <option value="500">500 (~1.7 мин при 200мс)</option>
+      <option value="1000">1000 (~3.3 мин при 200мс)</option>
+      <option value="2000">2000 (~6.7 мин при 200мс)</option>
+    </select>
+    <button class="btn btn-blue" style="flex:0 0 auto;width:auto;padding:8px 14px;margin-top:0" onclick="setNavLogCapacity()">Применить</button>
+  </div>
+  <p style="font-size:.73rem;color:#64748b;margin:0 0 10px">Смена размера очищает текущий лог. Меняй между заездами, не во время езды.</p>
+
   <div style="display:flex;gap:8px;margin-top:10px">
     <a class="btn btn-blue" href="/api/navlog.csv" download="navlog.csv" style="flex:1;text-align:center;text-decoration:none">⬇ Скачать CSV</a>
     <button class="btn" style="flex:1;background:#ef4444" onclick="clearNavLog()">🗑 Очистить</button>
@@ -749,8 +761,22 @@ function tmplLog() {
 function loadNavLogStatus() {
   fetch('/api/navlog/status')
     .then(r=>r.json())
-    .then(d=>setText('nl-count', (d.count ?? 0) + ' / ' + (d.capacity ?? 0)))
+    .then(d=>{
+      setText('nl-count', (d.count ?? 0) + ' / ' + (d.capacity ?? 0));
+      const sel = document.getElementById('nl-capacity');
+      if (sel && d.capacity) sel.value = String(d.capacity);
+    })
     .catch(()=>setText('nl-count','—'));
+}
+function setNavLogCapacity() {
+  const sel = document.getElementById('nl-capacity');
+  const cap = parseInt(sel?.value || 1000);
+  if (!confirm('Изменить размер буфера на ' + cap + '? Текущий лог навигации будет очищен.')) return;
+  fetch('/api/navlog/capacity', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({capacity: cap})
+  }).then(()=>loadNavLogStatus()).catch(()=>alert('Ошибка'));
 }
 function clearNavLog() {
   if (!confirm('Очистить лог навигации AUTO?')) return;

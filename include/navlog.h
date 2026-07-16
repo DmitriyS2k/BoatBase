@@ -14,6 +14,7 @@ void navLogRecord(double lat, double lon, float heading, float targetHeading, fl
 void navLogClear();
 int  navLogCount();
 int  navLogCapacity();
+void navLogSetCapacity(int newCapacity);  // 100..2000, пересоздаёт буфер (лог очищается)
 
 // Потоковая генерация CSV (для AsyncWebServer beginChunkedResponse).
 // navLogFillReset() вызывать один раз в начале каждого скачивания.

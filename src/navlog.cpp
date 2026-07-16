@@ -1,4 +1,5 @@
 #include "navlog.h"
+#include "settings.h"
 
 // ~1000 записей: при navInterval=200мс это ~3.3 мин активной навигации,
 // при 500мс — ~8 мин. Хватает на один заплыв к точке и обратно.
@@ -60,10 +61,11 @@ int  navLogCapacity() { return NAVLOG_SIZE; }
 // ── Потоковая генерация CSV ─────────────────────────────────────
 // Курсор — глобальное состояние, рассчитано на одно скачивание за раз
 // (личный отладочный инструмент, не публичный сервис).
-static int    fillIdx        = 0;
-static int    fillSnapHead   = 0;
-static int    fillSnapCount  = 0;
-static bool   fillHeaderSent = false;
+static int    fillIdx         = 0;
+static int    fillSnapHead    = 0;
+static int    fillSnapCount   = 0;
+static bool   fillConfigSent  = false;
+static bool   fillHeaderSent  = false;
 static String fillPending;
 
 // Снимок head/count на момент старта скачивания — чтобы новые записи,
@@ -72,6 +74,7 @@ void navLogFillReset() {
     fillIdx        = 0;
     fillSnapHead    = head;
     fillSnapCount   = count;
+    fillConfigSent  = false;
     fillHeaderSent  = false;
     fillPending     = "";
 }
@@ -80,7 +83,18 @@ size_t navLogFillCsv(uint8_t *buffer, size_t maxLen, size_t /*index*/) {
     size_t written = 0;
     while (written < maxLen) {
         if (fillPending.length() == 0) {
-            if (!fillHeaderSent) {
+            if (!fillConfigSent) {
+                // Настройки на момент скачивания — чтобы CSV было понятно,
+                // при каких параметрах записан этот заезд
+                char cfgLine[200];
+                snprintf(cfgLine, sizeof(cfgLine),
+                    "# pidKp=%.2f pidKi=%.2f pidKd=%.2f pidCurve=%.2f maxDiff=%d "
+                    "bearingAlpha=%.2f navInterval=%d cruiseSpeed=%d\n",
+                    cfg.pidKp, cfg.pidKi, cfg.pidKd, cfg.pidCurve, cfg.maxDiff,
+                    cfg.bearingAlpha, cfg.navInterval, cfg.cruiseSpeed);
+                fillPending = cfgLine;
+                fillConfigSent = true;
+            } else if (!fillHeaderSent) {
                 fillPending = "t_ms,lat,lon,heading,targetHeading,err,pidRaw,pidCurved,pidFinal,"
                               "motorL,motorR,dist,speedKmh,sats,hdop,wpTarget\n";
                 fillHeaderSent = true;

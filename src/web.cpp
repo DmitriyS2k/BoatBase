@@ -82,6 +82,7 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["maxDiff"]         = cfg.maxDiff;
     doc["bearingAlpha"]    = cfg.bearingAlpha;
     doc["navInterval"]     = cfg.navInterval;
+    doc["turnSlowFloor"]   = cfg.turnSlowFloor;
     doc["compassDecl"]     = cfg.compassDecl;
     doc["compassAxis"]     = cfg.compassAxis;
     doc["compassDeadzone"] = cfg.compassDeadzone;
@@ -113,6 +114,7 @@ static void handlePostSettings(AsyncWebServerRequest *req, uint8_t *data,
     if (doc["maxDiff"].is<int>())           cfg.maxDiff         = doc["maxDiff"];
     if (doc["bearingAlpha"].is<float>())    cfg.bearingAlpha    = doc["bearingAlpha"];
     if (doc["navInterval"].is<int>())       cfg.navInterval     = doc["navInterval"];
+    if (doc["turnSlowFloor"].is<float>())   cfg.turnSlowFloor   = doc["turnSlowFloor"];
     if (doc["compassDecl"].is<float>())     cfg.compassDecl     = doc["compassDecl"];
     if (doc["compassAxis"].is<int>())       cfg.compassAxis     = doc["compassAxis"];
     if (doc["compassDeadzone"].is<float>()) cfg.compassDeadzone = doc["compassDeadzone"];

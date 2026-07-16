@@ -392,6 +392,8 @@ function tmplSettings() {
   <input type="range" id="bearingAlpha" min="0.05" max="1.0" step="0.05" value="0.15">
   <div class="row"><span>Период коррекции курса (navInterval, мс)</span><span id="niVal">200</span></div>
   <input type="range" id="navInterval" min="100" max="1000" step="50" value="200">
+  <label>Замедление на резком повороте (turnSlowFloor) = <span id="tsfVal">—</span> <span class="hint">1.0=выкл · ниже=сильнее тормозит при развороте · лечит "змейку" на старте</span></label>
+  <input type="range" id="turnSlowFloor" min="0.2" max="1.0" step="0.05" value="0.4">
 
   <button class="btn btn-blue" onclick="saveSettings()">💾 Сохранить</button>
 </div>
@@ -514,6 +516,7 @@ function loadSettings() {
       set('maxDiff',      d.maxDiff ?? 150);
       set('bearingAlpha', d.bearingAlpha ?? 0.15);
       set('navInterval',  d.navInterval ?? 200);
+      set('turnSlowFloor',d.turnSlowFloor ?? 0.4);
       set('cruiseSpeed',  d.cruiseSpeed);
       set('slowdownDist', d.slowdownDist ?? 5);
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
@@ -526,7 +529,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','turnSlowFloor','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -545,6 +548,7 @@ function updRangeLabels() {
   bind('maxDiff','mdVal',0);
   bind('bearingAlpha','baVal',2);
   bind('navInterval','niVal',0);
+  bind('turnSlowFloor','tsfVal',2);
 
   // Trim ползунки
   const tl = parseInt(document.getElementById('trimLeft')?.value  || 0);
@@ -568,6 +572,7 @@ function saveSettings() {
     maxDiff:       parseInt(get('maxDiff')),
     bearingAlpha:  parseFloat(get('bearingAlpha')),
     navInterval:   parseInt(get('navInterval')),
+    turnSlowFloor: parseFloat(get('turnSlowFloor')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
     pidCurve:      parseFloat(get('pidCurve')),

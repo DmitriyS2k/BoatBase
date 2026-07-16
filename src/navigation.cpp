@@ -130,6 +130,7 @@ MotorOut navigationStep(int speedLimit) {
     }
     float bearing = smoothBearing;
     boat.targetHeading = bearing;
+    float err = headingError(bearing, boat.heading);
 
     // Максимальная мощность: как в Katerok снижаем при приближении
     // Katerok: < 3м → скорость/2. Адаптируем к PWM 1500..1900
@@ -143,6 +144,18 @@ MotorOut navigationStep(int speedLimit) {
         // slowdownSpeed тоже ограничиваем лимитом
         int slowMin = min(cfg.slowdownSpeed, speedLimit);
         maxSpeed = (int)(slowMin + (topSpeed - slowMin) * factor);
+    }
+
+    // Замедление на резком повороте: если ошибка курса большая, лодка на
+    // полном ходу входит в разворот как в занос — за счёт инерции проскакивает
+    // нужный курс, пока цикл управления (navInterval) это заметит ("змейка").
+    // Режем поступательную тягу пропорционально ошибке — разворот получается
+    // почти на месте, без заноса. errAbs<=30° — без изменений, >=120° — до floor.
+    float errAbs = fabsf(err);
+    if (errAbs > 30.0f) {
+        float turnFactor = constrain(1.0f - (errAbs - 30.0f) / 90.0f, cfg.turnSlowFloor, 1.0f);
+        int turnSpeed = 1500 + (int)((maxSpeed - 1500) * turnFactor);
+        maxSpeed = min(maxSpeed, turnSpeed);
     }
 
     // PID: dt соответствует navInterval
@@ -176,7 +189,6 @@ MotorOut navigationStep(int speedLimit) {
     right = constrain(right, 1000, 2000);
 
     // Лог для анализа/отладки — та же ошибка курса, что видел PID
-    float err = headingError(bearing, boat.heading);
     navLogRecord(boat.latitude, boat.longitude, boat.heading, bearing, err,
                  (float)pidRaw, pidCurved, (float)pidOut,
                  left, right, dist, boat.speed,

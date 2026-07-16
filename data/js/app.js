@@ -347,6 +347,9 @@ function tmplSettings() {
   <label>Скорость в AUTO, PWM <span class="hint">1500=стоп · 1900=полный</span></label>
   <input type="number" id="cruiseSpeed" min="1500" max="1900" step="10" value="1650">
 
+  <label style="margin-top:10px">Реальный потолок КПД моторов, PWM <span class="hint">измерь по факту — выше почти не даёт скорости</span></label>
+  <input type="number" id="motorMaxPwm" min="1700" max="2000" step="10" value="1800">
+
   <label style="margin-top:10px">Замедление перед точкой</label>
   <div class="two-col">
     <div>
@@ -517,6 +520,7 @@ function loadSettings() {
       set('bearingAlpha', d.bearingAlpha ?? 0.15);
       set('navInterval',  d.navInterval ?? 200);
       set('turnSlowFloor',d.turnSlowFloor ?? 0.4);
+      set('motorMaxPwm',  d.motorMaxPwm ?? 1800);
       set('cruiseSpeed',  d.cruiseSpeed);
       set('slowdownDist', d.slowdownDist ?? 5);
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
@@ -573,6 +577,7 @@ function saveSettings() {
     bearingAlpha:  parseFloat(get('bearingAlpha')),
     navInterval:   parseInt(get('navInterval')),
     turnSlowFloor: parseFloat(get('turnSlowFloor')),
+    motorMaxPwm:   parseInt(get('motorMaxPwm')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
     pidCurve:      parseFloat(get('pidCurve')),

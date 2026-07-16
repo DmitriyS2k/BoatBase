@@ -111,9 +111,9 @@ size_t navLogFillCsv(uint8_t *buffer, size_t maxLen, size_t /*index*/) {
                 char cfgLine[200];
                 snprintf(cfgLine, sizeof(cfgLine),
                     "# pidKp=%.2f pidKi=%.2f pidKd=%.2f pidCurve=%.2f maxDiff=%d "
-                    "bearingAlpha=%.2f navInterval=%d turnSlowFloor=%.2f cruiseSpeed=%d\n",
+                    "bearingAlpha=%.2f navInterval=%d turnSlowFloor=%.2f motorMaxPwm=%d cruiseSpeed=%d\n",
                     cfg.pidKp, cfg.pidKi, cfg.pidKd, cfg.pidCurve, cfg.maxDiff,
-                    cfg.bearingAlpha, cfg.navInterval, cfg.turnSlowFloor, cfg.cruiseSpeed);
+                    cfg.bearingAlpha, cfg.navInterval, cfg.turnSlowFloor, cfg.motorMaxPwm, cfg.cruiseSpeed);
                 fillPending = cfgLine;
                 fillConfigSent = true;
             } else if (!fillHeaderSent) {

@@ -182,8 +182,21 @@ MotorOut navigationStep(int speedLimit) {
     int pidClamped = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
     int absPid = abs(pidClamped);
     int centeredSpeed = constrain(maxSpeed, 1000, 2000 - absPid);
-    int left  = constrain(centeredSpeed + pidClamped, 1000, 2000);
-    int right = constrain(centeredSpeed - pidClamped, 1000, 2000);
+    int fast = centeredSpeed + absPid;
+    int slow = centeredSpeed - absPid;
+
+    // Реальный потолок КПД моторов (проверено на воде: ~1750-1800, не 2000) —
+    // выше него добавка PWM почти не даёт тяги. Если "быстрый" борт упёрся
+    // в потолок, излишек перекладываем на "медленный" — иначе часть заданной
+    // разницы тяги впустую улетает выше потолка вместо реального поворота.
+    if (fast > cfg.motorMaxPwm) {
+        int excess = fast - cfg.motorMaxPwm;
+        fast -= excess;
+        slow -= excess;
+    }
+
+    int left  = (pidClamped >= 0) ? fast : slow;
+    int right = (pidClamped >= 0) ? slow : fast;
 
     left  = constrain(left,  1000, 2000);
     right = constrain(right, 1000, 2000);

@@ -348,14 +348,32 @@ function draw(){
   if (row){
     const bp = project(row.lat,row.lon,lat0,lon0);
     const bs = toScreen(bp.x,bp.y);
-    // курс (синий) и целевой курс (оранжевый)
-    drawArrow(bs.sx,bs.sy, row.heading, '#3b82f6', 26);
+    // целевой курс — тонкая оранжевая линия (куда НАДО смотреть)
     drawArrow(bs.sx,bs.sy, row.targetHeading, '#f59e0b', 34);
-    ctx.fillStyle='#fff';
-    ctx.beginPath(); ctx.arc(bs.sx,bs.sy,6,0,7); ctx.fill();
-    ctx.strokeStyle='#0f172a'; ctx.lineWidth=1.5; ctx.stroke();
+    // сама лодка — красный силуэт, повёрнутый по фактическому курсу (куда смотрит нос)
+    drawBoatIcon(bs.sx,bs.sy, row.heading);
     updateInfo(row);
   }
+}
+
+function drawBoatIcon(cx,cy,headingDeg){
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(deg2rad(headingDeg));  // canvas rotate по часовой = компас по часовой, 0°=нос вверх
+  ctx.beginPath();
+  ctx.moveTo(0,-17);   // нос
+  ctx.lineTo(6,-3);
+  ctx.lineTo(5.5,11);
+  ctx.lineTo(0,7);      // небольшая выемка на корме
+  ctx.lineTo(-5.5,11);
+  ctx.lineTo(-6,-3);
+  ctx.closePath();
+  ctx.fillStyle='#ef4444';
+  ctx.fill();
+  ctx.strokeStyle='#7f1d1d';
+  ctx.lineWidth=1.5;
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawArrow(cx,cy,headingDeg,color,len){

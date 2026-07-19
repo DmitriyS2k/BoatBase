@@ -29,6 +29,45 @@ float geoBearing(double lat1, double lon1, double lat2, double lon2) {
     return b;
 }
 
+// ── Line-of-sight наведение (альтернатива прицеливанию прямо в точку) ──
+// Обычный режим (geoBearing прямо в точку) при старте не с прямой линии
+// старт→цель даёт плавную дугу вместо прямой (лодка постоянно перецеливается
+// на конечную точку по мере движения). LOS вместо этого целится в "морковку" —
+// точку на самой линии старт→цель, на losLookahead метров впереди проекции
+// лодки на эту линию — так лодка сходится на прямую и дальше идёт по ней.
+// Плоское приближение (метры) — точно для дистанций в сотни метров.
+static float losBearing(double curLat, double curLon,
+                          double startLat, double startLon,
+                          double wpLat, double wpLon, float lookaheadM) {
+    const float R = 6371000.0f;
+    float latRad = toRad((float)startLat);
+    float tx = toRad((float)(wpLon - startLon))  * R * cosf(latRad);
+    float ty = toRad((float)(wpLat - startLat))  * R;
+    float bx = toRad((float)(curLon - startLon)) * R * cosf(latRad);
+    float by = toRad((float)(curLat - startLat)) * R;
+
+    float lineLen = sqrtf(tx*tx + ty*ty);
+    if (lineLen < 1.0f) {
+        // старт и цель почти совпадают — целимся прямо в точку
+        return geoBearing(curLat, curLon, wpLat, wpLon);
+    }
+    float dirX = tx / lineLen, dirY = ty / lineLen;
+    float t = bx*dirX + by*dirY;                       // проекция лодки на линию
+    t = constrain(t, 0.0f, lineLen);
+    float carrotT = constrain(t + lookaheadM, 0.0f, lineLen);
+    float cx = dirX * carrotT, cy = dirY * carrotT;     // "морковка" на линии
+
+    float dx = cx - bx, dy = cy - by;
+    if (fabsf(dx) < 0.01f && fabsf(dy) < 0.01f) {
+        // лодка почти в самой "морковке" (например, уже у цели) — целимся в саму цель
+        return geoBearing(curLat, curLon, wpLat, wpLon);
+    }
+    float b = atan2f(dx, dy) * 180.0f / M_PI;  // x=восток,y=север → компас (0=север)
+    while (b < 0)    b += 360.0f;
+    while (b >= 360) b -= 360.0f;
+    return b;
+}
+
 // ── Вычисление минимального угла ошибки курса (из Katerok) ──────
 // Возвращает -180..+180. Мёртвая зона ±2° — не реагируем на шум
 static float headingError(float target, float current) {
@@ -46,6 +85,8 @@ static float pidIntegral   = 0.0f;
 static float pidPrevErr    = 0.0f;
 static float smoothPid     = 0.0f;
 static float smoothBearing = -1.0f;  // курс на точку, сглаженный bearingAlpha
+static double navStartLat = 0.0, navStartLon = 0.0;  // позиция старта текущей ноги (для LOS)
+static bool   navStartPending = true;                 // ещё не захватили старт этой ноги
 
 static int computePID(float currentHeading, float targetHeading,
                       float kp, float ki, float kd,
@@ -85,6 +126,7 @@ void navigationReset() {
     smoothPid     = 0.0f;
     smoothBearing = -1.0f;  // забыть курс на предыдущую точку — иначе первые
                              // секунды новой ноги гонимся за старой целью
+    navStartPending = true; // захватить новую стартовую точку для LOS при следующем шаге
 }
 
 // ── Структура выхода моторов ─────────────────────────────────────
@@ -115,7 +157,18 @@ MotorOut navigationStep(int speedLimit) {
         return {1500, 1500};
     }
 
-    float rawBearing = geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
+    // Захват стартовой точки ноги для LOS — только на первом валидном шаге
+    // после сброса (см. navigationReset), чтобы линия старт→цель не съезжала
+    if (navStartPending) {
+        navStartLat = boat.latitude;
+        navStartLon = boat.longitude;
+        navStartPending = false;
+    }
+
+    float rawBearing = (cfg.navMode == 1)
+        ? losBearing(boat.latitude, boat.longitude, navStartLat, navStartLon,
+                     wp.lat, wp.lon, cfg.losLookahead)
+        : geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
     // Сглаживаем bearing фильтром низких частот (alpha=0.1) чтобы убрать GPS шум
     // Без фильтра GPS прыжки на 1-3м меняют bearing на несколько градусов → рывки
     if (smoothBearing < 0.0f) {

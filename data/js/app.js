@@ -372,6 +372,19 @@ function tmplSettings() {
 </div>
 
 <div class="card">
+  <h2>Режим наведения (AUTO)</h2>
+  <p class="help-intro">Два способа целиться в точку — переключай для теста, старый остаётся по умолчанию.</p>
+  <label>Способ</label>
+  <select id="navMode" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary);margin-bottom:10px">
+    <option value="0">Прямо в точку (старый) — даёт дугу, если стартуешь не с прямой</option>
+    <option value="1">Line-of-sight (новый) — целится на прямую линию старт→точка</option>
+  </select>
+  <label>Упреждение по линии (losLookahead), м = <span id="llVal">—</span> <span class="hint">меньше=резче сходится к прямой, больше=плавнее</span></label>
+  <input type="range" id="losLookahead" min="3" max="30" step="1" value="10">
+  <button class="btn btn-blue" onclick="saveSettings()">💾 Сохранить</button>
+</div>
+
+<div class="card">
   <h2>PID регулятор курса</h2>
   <p class="help-intro">Подробное описание — вкладка Справка. Стартовые значения проверены на воде (Katerok).</p>
 
@@ -521,6 +534,8 @@ function loadSettings() {
       set('navInterval',  d.navInterval ?? 200);
       set('turnSlowFloor',d.turnSlowFloor ?? 0.4);
       set('motorMaxPwm',  d.motorMaxPwm ?? 1800);
+      set('navMode',       d.navMode ?? 0);
+      set('losLookahead',  d.losLookahead ?? 10);
       set('cruiseSpeed',  d.cruiseSpeed);
       set('slowdownDist', d.slowdownDist ?? 5);
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
@@ -533,7 +548,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','turnSlowFloor','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','turnSlowFloor','losLookahead','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -553,6 +568,7 @@ function updRangeLabels() {
   bind('bearingAlpha','baVal',2);
   bind('navInterval','niVal',0);
   bind('turnSlowFloor','tsfVal',2);
+  bind('losLookahead','llVal',0);
 
   // Trim ползунки
   const tl = parseInt(document.getElementById('trimLeft')?.value  || 0);
@@ -578,6 +594,8 @@ function saveSettings() {
     navInterval:   parseInt(get('navInterval')),
     turnSlowFloor: parseFloat(get('turnSlowFloor')),
     motorMaxPwm:   parseInt(get('motorMaxPwm')),
+    navMode:       parseInt(get('navMode') || 0),
+    losLookahead:  parseFloat(get('losLookahead')),
     pidKi:         parseFloat(get('pidKi')),
     pidKd:         parseFloat(get('pidKd')),
     pidCurve:      parseFloat(get('pidCurve')),

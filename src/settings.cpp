@@ -24,6 +24,8 @@ void settingsLoad() {
     cfg.navInterval    = prefs.getInt("navInt",     200);
     cfg.turnSlowFloor  = prefs.getFloat("turnSlowFl", 0.4f);
     cfg.motorMaxPwm    = prefs.getInt("motorMaxPwm", 1800);
+    cfg.navMode        = prefs.getInt("navMode",     0);
+    cfg.losLookahead   = prefs.getFloat("losLook",   10.0f);
     cfg.compassDecl    = prefs.getFloat("cDecl",    0.0f);
     cfg.compassXOffset = prefs.getFloat("cXOff",    0.0f);
     cfg.compassYOffset = prefs.getFloat("cYOff",    0.0f);
@@ -62,6 +64,8 @@ void settingsSave() {
     prefs.putInt("navInt",    cfg.navInterval);
     prefs.putFloat("turnSlowFl", cfg.turnSlowFloor);
     prefs.putInt("motorMaxPwm", cfg.motorMaxPwm);
+    prefs.putInt("navMode",     cfg.navMode);
+    prefs.putFloat("losLook",   cfg.losLookahead);
     prefs.putFloat("cDecl",   cfg.compassDecl);
     prefs.putFloat("cXOff",   cfg.compassXOffset);
     prefs.putFloat("cYOff",   cfg.compassYOffset);

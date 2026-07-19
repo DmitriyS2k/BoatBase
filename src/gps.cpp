@@ -6,8 +6,27 @@
 TinyGPSPlus gps;
 HardwareSerial GPSSerial(1);
 
+// UBX-CFG-RATE (класс 0x06, ID 0x08) — частота выдачи позиции модулем.
+// По умолчанию NEO-6M отдаёт фикс 1 раз/сек — между обновлениями targetHeading
+// в navigationStep() держит устаревшее направление на точку (компас реагирует
+// быстро, а куда именно держать курс — обновляется только раз в секунду).
+// Поднимаем до 2Гц (measRate=500мс): каждый фикс всё ещё успевает передаться
+// на 9600 бод, 5Гц брать не стали — рискует не влезть в тот же UART-бюджет.
+static void gpsSetRate2Hz() {
+    static const uint8_t UBX_RATE_2HZ[] = {
+        0xB5, 0x62, 0x06, 0x08, 0x06, 0x00,
+        0xF4, 0x01,   // measRate = 500 мс (2Гц)
+        0x01, 0x00,   // navRate = 1 (решение на каждом измерении)
+        0x00, 0x00,   // timeRef = 0 (UTC)
+        0x0A, 0x75    // checksum
+    };
+    GPSSerial.write(UBX_RATE_2HZ, sizeof(UBX_RATE_2HZ));
+}
+
 void gpsInit() {
     GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+    delay(100);         // дать модулю принять UART перед командой
+    gpsSetRate2Hz();
 }
 
 static void gpsReinit() {

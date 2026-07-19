@@ -9,6 +9,7 @@
 #include "motors.h"
 #include "eventlog.h"
 #include "navlog.h"
+#include "cruiselog.h"
 
 AsyncWebServer server(80);
 AsyncWebSocket  ws("/ws");
@@ -224,6 +225,39 @@ void webInit() {
         resp->addHeader("Content-Disposition", "attachment; filename=navlog.csv");
         req->send(resp);
     });
+
+    // ── Лог круиз-режима (отдельно от navlog) ────────────────────
+    server.on("/api/cruiselog/status", HTTP_GET, [](AsyncWebServerRequest *req) {
+        JsonDocument doc;
+        doc["count"]    = cruiseLogCount();
+        doc["capacity"] = cruiseLogCapacity();
+        String json;
+        serializeJson(doc, json);
+        req->send(200, "application/json", json);
+    });
+    server.on("/api/cruiselog/clear", HTTP_POST, [](AsyncWebServerRequest *req) {
+        cruiseLogClear();
+        req->send(200, "text/plain", "OK");
+    });
+    server.on("/api/cruiselog/capacity", HTTP_POST,
+        [](AsyncWebServerRequest *req){}, nullptr,
+        [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len) != DeserializationError::Ok) {
+                req->send(400, "application/json", "{\"error\":\"bad json\"}");
+                return;
+            }
+            int cap = doc["capacity"] | 1000;
+            cruiseLogSetCapacity(cap);
+            req->send(200, "application/json", "{\"ok\":true}");
+        });
+    server.on("/api/cruiselog.csv", HTTP_GET, [](AsyncWebServerRequest *req) {
+        cruiseLogFillReset();
+        AsyncWebServerResponse *resp = req->beginChunkedResponse("text/csv", cruiseLogFillCsv);
+        resp->addHeader("Content-Disposition", "attachment; filename=cruiselog.csv");
+        req->send(resp);
+    });
+
     server.on("/api/joystick",  HTTP_POST,
         [](AsyncWebServerRequest *req){}, nullptr, handleJoystick);
 

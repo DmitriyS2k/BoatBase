@@ -4,6 +4,7 @@
 #include "settings.h"
 #include "eventlog.h"
 #include "navlog.h"
+#include "cruiselog.h"
 
 // ── Геодезия (Haversine) ────────────────────────────────────────
 static float toRad(float deg) { return deg * M_PI / 180.0f; }
@@ -247,6 +248,10 @@ MotorOut cruiseStep(int thrust, int ch4) {
     int centeredThrust = constrain(thrust, 1000, 2000 - maxSteer);
     int left  = constrain((int)(centeredThrust + steerClamped), 1000, 2000);
     int right = constrain((int)(centeredThrust - steerClamped), 1000, 2000);
+
+    cruiseLogRecord(boat.latitude, boat.longitude, boat.heading, cruiseLockedHeading, err,
+                     ch4, manualSteer, autoSteer, steerClamped,
+                     left, right, thrust);
 
     return {left, right};
 }

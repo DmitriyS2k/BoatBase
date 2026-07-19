@@ -43,7 +43,7 @@ function buildPage() {
     case 'ota':      pg.innerHTML = tmplOta();      break;
     case 'joystick': pg.innerHTML = tmplJoystick(); initJoystick(); break;
     case 'nav':      pg.innerHTML = tmplNav();      break;
-    case 'log':      pg.innerHTML = tmplLog();      loadLog(); loadNavLogStatus(); break;
+    case 'log':      pg.innerHTML = tmplLog();      loadLog(); loadNavLogStatus(); loadCruiseLogStatus(); break;
     case 'settings': pg.innerHTML = tmplSettings(); loadSettings(); break;
     case 'help':     pg.innerHTML = tmplHelp();     break;
     case 'debug':    pg.innerHTML = tmplDebug();    break;
@@ -765,6 +765,30 @@ function tmplLog() {
     <a class="btn btn-blue" href="/api/navlog.csv" download="navlog.csv" style="flex:1;text-align:center;text-decoration:none">⬇ Скачать CSV</a>
     <button class="btn" style="flex:1;background:#ef4444" onclick="clearNavLog()">🗑 Очистить</button>
   </div>
+</div>
+<div class="card">
+  <h2>Лог круиз-режима (CSV)</h2>
+  <p style="font-size:.8rem;color:#64748b;margin:0 0 10px">
+    Пишется автоматически, пока активен круиз (ch3&gt;1100 в MANUAL): курс, зафиксированный курс,
+    ошибка, СН4, PWM моторов. Отдельно от лога AUTO — другие поля (нет точки назначения).
+  </p>
+  <div class="row"><span>Записей в буфере</span><span id="cl-count">—</span></div>
+
+  <label style="margin-top:10px">Размер буфера</label>
+  <div style="display:flex;gap:8px;margin-bottom:4px">
+    <select id="cl-capacity" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary)">
+      <option value="500">500 (~1.7 мин при 200мс)</option>
+      <option value="1000">1000 (~3.3 мин при 200мс)</option>
+      <option value="2000">2000 (~6.7 мин при 200мс)</option>
+    </select>
+    <button class="btn btn-blue" style="flex:0 0 auto;width:auto;padding:8px 14px;margin-top:0" onclick="setCruiseLogCapacity()">Применить</button>
+  </div>
+  <p style="font-size:.73rem;color:#64748b;margin:0 0 10px">Смена размера очищает текущий лог. Меняй между заездами, не во время езды.</p>
+
+  <div style="display:flex;gap:8px;margin-top:10px">
+    <a class="btn btn-blue" href="/api/cruiselog.csv" download="cruiselog.csv" style="flex:1;text-align:center;text-decoration:none">⬇ Скачать CSV</a>
+    <button class="btn" style="flex:1;background:#ef4444" onclick="clearCruiseLog()">🗑 Очистить</button>
+  </div>
 </div>`;
 }
 
@@ -792,6 +816,33 @@ function clearNavLog() {
   if (!confirm('Очистить лог навигации AUTO?')) return;
   fetch('/api/navlog/clear', {method:'POST'})
     .then(()=>loadNavLogStatus())
+    .catch(()=>alert('Ошибка'));
+}
+
+function loadCruiseLogStatus() {
+  fetch('/api/cruiselog/status')
+    .then(r=>r.json())
+    .then(d=>{
+      setText('cl-count', (d.count ?? 0) + ' / ' + (d.capacity ?? 0));
+      const sel = document.getElementById('cl-capacity');
+      if (sel && d.capacity) sel.value = String(d.capacity);
+    })
+    .catch(()=>setText('cl-count','—'));
+}
+function setCruiseLogCapacity() {
+  const sel = document.getElementById('cl-capacity');
+  const cap = parseInt(sel?.value || 1000);
+  if (!confirm('Изменить размер буфера на ' + cap + '? Текущий лог круиза будет очищен.')) return;
+  fetch('/api/cruiselog/capacity', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({capacity: cap})
+  }).then(()=>loadCruiseLogStatus()).catch(()=>alert('Ошибка'));
+}
+function clearCruiseLog() {
+  if (!confirm('Очистить лог круиза?')) return;
+  fetch('/api/cruiselog/clear', {method:'POST'})
+    .then(()=>loadCruiseLogStatus())
     .catch(()=>alert('Ошибка'));
 }
 

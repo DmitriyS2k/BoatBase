@@ -87,6 +87,7 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["motorMaxPwm"]     = cfg.motorMaxPwm;
     doc["navMode"]         = cfg.navMode;
     doc["losLookahead"]    = cfg.losLookahead;
+    doc["gpsRateHz"]       = cfg.gpsRateHz;
     doc["compassDecl"]     = cfg.compassDecl;
     doc["compassAxis"]     = cfg.compassAxis;
     doc["compassDeadzone"] = cfg.compassDeadzone;
@@ -196,6 +197,22 @@ void webInit() {
         gpsReset();
         req->send(200, "text/plain", "OK");
     });
+    // Частота GPS — применяется сразу к модулю, без перезагрузки корабля
+    server.on("/api/gpsrate", HTTP_POST,
+        [](AsyncWebServerRequest *req){}, nullptr,
+        [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t) {
+            JsonDocument doc;
+            if (deserializeJson(doc, data, len) != DeserializationError::Ok) {
+                req->send(400, "application/json", "{\"error\":\"bad json\"}");
+                return;
+            }
+            int hz = doc["hz"] | 2;
+            cfg.gpsRateHz = hz;
+            settingsSave();
+            extern void gpsSetRate(int hz);
+            gpsSetRate(hz);
+            req->send(200, "application/json", "{\"ok\":true}");
+        });
     server.on("/api/log",       HTTP_GET,  handleGetLog);
 
     // ── Лог навигации AUTO (для анализа/отладки на компьютере) ──

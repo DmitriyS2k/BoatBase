@@ -6,3 +6,4 @@
 void gpsInit();
 void gpsUpdate();
 void gpsReset();
+void gpsSetRate(int hz);  // 1, 2 или 5 — применяется сразу, живьём, без перезагрузки

@@ -39,7 +39,7 @@ function buildPage() {
   const pg = document.getElementById('page');
   if (!pg) return;
   switch(curPage) {
-    case 'dash':     pg.innerHTML = tmplDash();     break;
+    case 'dash':     pg.innerHTML = tmplDash();     loadGpsRateSelect(); break;
     case 'ota':      pg.innerHTML = tmplOta();      break;
     case 'joystick': pg.innerHTML = tmplJoystick(); initJoystick(); break;
     case 'nav':      pg.innerHTML = tmplNav();      break;
@@ -186,6 +186,16 @@ function tmplDash() {
   <div class="row"><span>Долгота</span><span id="d-lon">—</span></div>
   <div class="row"><span>Скорость</span><span id="d-speed">—</span></div>
   <button onclick="gpsReset()" style="margin-top:8px;background:#ef4444">Сбросить GPS (холодный старт)</button>
+
+  <label style="margin-top:10px">Частота обновления GPS <span class="hint">выше=свежее курс на точку, но риск потерь на 5Гц</span></label>
+  <div style="display:flex;gap:8px">
+    <select id="gpsRateHz" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary)">
+      <option value="1">1Гц (дефолт модуля)</option>
+      <option value="2" selected>2Гц</option>
+      <option value="5">5Гц (на свой риск)</option>
+    </select>
+    <button class="btn btn-blue" style="flex:0 0 auto;width:auto;padding:8px 14px;margin-top:0" onclick="setGpsRate()">Применить</button>
+  </div>
 </div>
 <div class="card">
   <h2>Мотор</h2>
@@ -954,4 +964,24 @@ function gpsReset() {
     .then(r => r.text())
     .then(() => alert('GPS сброшен — подожди 1-2 минуты для поиска спутников'))
     .catch(() => alert('Ошибка'));
+}
+
+function loadGpsRateSelect() {
+  fetch('/api/settings')
+    .then(r=>r.json())
+    .then(d=>{
+      const sel = document.getElementById('gpsRateHz');
+      if (sel && d.gpsRateHz) sel.value = String(d.gpsRateHz);
+    })
+    .catch(()=>{});
+}
+function setGpsRate() {
+  const sel = document.getElementById('gpsRateHz');
+  const hz = parseInt(sel?.value || 2);
+  fetch('/api/gpsrate', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({hz})
+  }).then(r=>r.json()).then(d=>alert(d.ok?('Частота GPS: '+hz+'Гц'):'Ошибка'))
+    .catch(()=>alert('Ошибка'));
 }

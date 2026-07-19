@@ -1,6 +1,7 @@
 #include <TinyGPS++.h>
 #include <HardwareSerial.h>
 #include "state.h"
+#include "settings.h"
 #include "gps.h"
 
 TinyGPSPlus gps;
@@ -10,23 +11,39 @@ HardwareSerial GPSSerial(1);
 // По умолчанию NEO-6M отдаёт фикс 1 раз/сек — между обновлениями targetHeading
 // в navigationStep() держит устаревшее направление на точку (компас реагирует
 // быстро, а куда именно держать курс — обновляется только раз в секунду).
-// Поднимаем до 2Гц (measRate=500мс): каждый фикс всё ещё успевает передаться
-// на 9600 бод, 5Гц брать не стали — рискует не влезть в тот же UART-бюджет.
-static void gpsSetRate2Hz() {
+// Не сохраняется во флеш модуля — применяется заново каждый раз при старте
+// (gpsInit) и живьём при смене в вебе (gpsSetRate), без перепрошивки.
+void gpsSetRate(int hz) {
+    static const uint8_t UBX_RATE_1HZ[] = {
+        0xB5, 0x62, 0x06, 0x08, 0x06, 0x00,
+        0xE8, 0x03,   // measRate = 1000 мс (1Гц, дефолт модуля)
+        0x01, 0x00, 0x00, 0x00,
+        0x00, 0x37
+    };
     static const uint8_t UBX_RATE_2HZ[] = {
         0xB5, 0x62, 0x06, 0x08, 0x06, 0x00,
         0xF4, 0x01,   // measRate = 500 мс (2Гц)
-        0x01, 0x00,   // navRate = 1 (решение на каждом измерении)
-        0x00, 0x00,   // timeRef = 0 (UTC)
-        0x0A, 0x75    // checksum
+        0x01, 0x00, 0x00, 0x00,
+        0x0A, 0x75
     };
-    GPSSerial.write(UBX_RATE_2HZ, sizeof(UBX_RATE_2HZ));
+    // 5Гц — на свой риск: полный набор NMEA-предложений на 9600 бод может
+    // не успевать передаваться на такой частоте и начать теряться/биться.
+    static const uint8_t UBX_RATE_5HZ[] = {
+        0xB5, 0x62, 0x06, 0x08, 0x06, 0x00,
+        0xC8, 0x00,   // measRate = 200 мс (5Гц)
+        0x01, 0x00, 0x00, 0x00,
+        0xDD, 0x68
+    };
+    if (hz >= 5)      GPSSerial.write(UBX_RATE_5HZ, sizeof(UBX_RATE_5HZ));
+    else if (hz >= 2) GPSSerial.write(UBX_RATE_2HZ, sizeof(UBX_RATE_2HZ));
+    else              GPSSerial.write(UBX_RATE_1HZ, sizeof(UBX_RATE_1HZ));
+    Serial.printf("[GPS] Rate set to %dHz\n", hz);
 }
 
 void gpsInit() {
     GPSSerial.begin(9600, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
     delay(100);         // дать модулю принять UART перед командой
-    gpsSetRate2Hz();
+    gpsSetRate(cfg.gpsRateHz);
 }
 
 static void gpsReinit() {

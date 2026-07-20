@@ -1,3 +1,10 @@
+:root{
+  --border:#334155;
+  --surface-1:#0f172a;
+  --text-primary:#e2e8f0;
+  --text-secondary:#94a3b8;
+  --text-accent:#3b82f6;
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e293b;border-bottom:1px solid #334155}

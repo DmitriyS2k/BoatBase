@@ -95,7 +95,6 @@ function updateInPlace() {
       const p = Math.round((s.speedLim - 1500) * 100 / 400);
       setText('d-spd', s.speedLim + ' PWM (' + Math.max(0,Math.min(100,p)) + '%)');
     }
-    drawCompass();
   }
 
   if (curPage==='nav') {
@@ -185,7 +184,7 @@ function tmplDash() {
   <div class="row"><span>Широта</span><span id="d-lat">—</span></div>
   <div class="row"><span>Долгота</span><span id="d-lon">—</span></div>
   <div class="row"><span>Скорость</span><span id="d-speed">—</span></div>
-  <button onclick="gpsReset()" style="margin-top:8px;background:#ef4444">Сбросить GPS (холодный старт)</button>
+  <button class="btn" onclick="gpsReset()" style="margin-top:8px;background:#ef4444">🔄 Сбросить GPS (холодный старт)</button>
 
   <label style="margin-top:10px">Частота обновления GPS <span class="hint">выше=свежее курс на точку, но риск потерь на 5Гц</span></label>
   <div style="display:flex;gap:8px">
@@ -203,7 +202,6 @@ function tmplDash() {
 </div>
 <div class="card">
   <h2>Компас</h2>
-  <div class="compass-wrap"><canvas id="compass" width="130" height="130"></canvas></div>
   <div class="big" id="d-heading">0°</div>
 </div>
 <div class="card">
@@ -403,10 +401,10 @@ function tmplSettings() {
   <h2>PID регулятор курса</h2>
   <p class="help-intro">Подробное описание — вкладка Справка. Стартовые значения проверены на воде (Katerok).</p>
 
-  <label>Kp = <span id="kpVal">—</span> <span class="hint">основная сила поворота · вилянье → уменьши</span></label>
+  <label>Kp = <span id="kpVal">—</span> <span class="hint">сила поворота · мало=дуга к точке, много=рыскание</span></label>
   <input type="range" id="pidKp" min="0.5" max="20" step="0.1" value="3.0">
 
-  <label>Ki = <span id="kiVal">—</span> <span class="hint">убирает постоянное отклонение от курса</span></label>
+  <label>Ki = <span id="kiVal">—</span> <span class="hint">убирает постоянный снос · обычно 0, добавляй по 0.1-0.5</span></label>
   <input type="range" id="pidKi" min="0" max="20" step="0.1" value="1.5">
 
   <label>Kd = <span id="kdVal">—</span> <span class="hint">гасит колебания · обычно не трогать</span></label>
@@ -417,13 +415,13 @@ function tmplSettings() {
 
   <label>Круиз gain = <span id="crgVal">—</span> <span class="hint">удержание курса в ручном круизе (ch3)</span></label>
   <input type="range" id="cruiseGain" min="0.1" max="5" step="0.1" value="0.8">
-  <label>Круиз: скорость поворота от сн4, °/с = <span id="csrVal">—</span> <span class="hint">сн4 крутит цель курса, а не моторы напрямую · выше=резче доворачивает, ниже=плавнее</span></label>
+  <label>Скорость доворота сн4 (cruiseSteerRate), °/с = <span id="csrVal">—</span> <span class="hint">мало=вялый доворот · много=трудно точно подрулить</span></label>
   <input type="range" id="cruiseSteerRate" min="3" max="40" step="1" value="15">
-  <div class="row"><span>Макс. разница моторов (maxDiff)</span><span id="mdVal">150</span></div>
+  <label>Макс. разница моторов (maxDiff) = <span id="mdVal">—</span> <span class="hint">мало=плавнее, шире дуга · много=круче поворот</span></label>
   <input type="range" id="maxDiff" min="10" max="400" step="5" value="150">
-  <div class="row"><span>Сглаживание курса на точку (bearingAlpha)</span><span id="baVal">0.15</span></div>
+  <label>Сглаживание курса на точку (bearingAlpha) = <span id="baVal">—</span> <span class="hint">мало=плавнее, медленнее реагирует · много=быстрее, но больше рывков</span></label>
   <input type="range" id="bearingAlpha" min="0.05" max="1.0" step="0.05" value="0.15">
-  <div class="row"><span>Период коррекции курса (navInterval, мс)</span><span id="niVal">200</span></div>
+  <label>Период коррекции курса (navInterval), мс = <span id="niVal">—</span> <span class="hint">мало=чаще правит, больше рывков · много=плавнее, медленнее реагирует</span></label>
   <input type="range" id="navInterval" min="100" max="1000" step="50" value="200">
   <label>Замедление на резком повороте (turnSlowFloor) = <span id="tsfVal">—</span> <span class="hint">1.0=выкл · ниже=сильнее тормозит при развороте · лечит "змейку" на старте</span></label>
   <input type="range" id="turnSlowFloor" min="0.2" max="1.0" step="0.05" value="0.4">
@@ -472,7 +470,7 @@ function tmplSettings() {
   <label style="margin-top:10px">Мёртвая зона компаса ±° <span class="hint">2°=тихо 5°=волнение</span></label>
   <input type="number" id="compassDeadzone" min="0" max="15" step="0.5" value="2">
 
-  <button class="btn btn-blue" style="margin-top:10px" onclick="saveCompass()">💾 Сохранить компас</button>
+  <button class="btn btn-blue" style="margin-top:10px" onclick="saveCompass(true)">💾 Сохранить компас</button>
 </div>
 
 <div class="card">
@@ -569,8 +567,8 @@ function loadSettings() {
   ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','cruiseSteerRate','maxDiff','bearingAlpha','navInterval','turnSlowFloor','losLookahead','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
-  // Живое изменение оси — сразу сохраняем и видим результат
-  document.getElementById('compassAxis')?.addEventListener('change', saveCompass);
+  // Живое изменение оси — сразу сохраняем и видим результат, без модалки (иначе мешает подбору)
+  document.getElementById('compassAxis')?.addEventListener('change', () => saveCompass(false));
 }
 function updRangeLabels() {
   const bind=(id,outId,dec)=>{
@@ -632,7 +630,7 @@ function saveSettings() {
     .then(r=>r.json()).then(d=>alert(d.ok?'✅ Сохранено!':'❌ Ошибка'))
     .catch(()=>alert('❌ Нет связи'));
 }
-function saveCompass() {
+function saveCompass(showAlert) {
   const get=id=>{const e=document.getElementById(id);return e?e.value:null;};
   const body={
     compassDecl:     parseFloat(get('compassDecl')||0),
@@ -640,7 +638,9 @@ function saveCompass() {
     compassDeadzone: parseFloat(get('compassDeadzone')||2),
   };
   fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .catch(()=>{});
+    .then(r=>r.json())
+    .then(d=>{ if (showAlert) alert(d.ok?'✅ Сохранено!':'❌ Ошибка'); })
+    .catch(()=>{ if (showAlert) alert('❌ Нет связи'); });
 }
 function startCalib() {
   const btn=document.getElementById('calibBtn');

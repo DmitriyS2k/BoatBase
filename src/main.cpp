@@ -11,10 +11,10 @@
 #include "eventlog.h"
 
 static int wpFromCh5(uint16_t v) {
-    if (v < 1250) return 0;
-    if (v < 1500) return 1;
-    if (v < 1750) return 2;
-    return 3;
+    if (v <= 1502) return 0;   // Дом:    1500-1502 (и ниже)
+    if (v <= 1506) return 1;   // Точка1: 1503-1506
+    if (v <= 1511) return 2;   // Точка2: 1507-1511
+    return 3;                  // Точка3: 1512-1517 (и выше)
 }
 
 static BoatMode modeFromCh9(uint16_t v) {

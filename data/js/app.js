@@ -152,7 +152,7 @@ function updateInPlace() {
     setText('dbg-wpsel', s.wpSel??0);
     // ch5 индикатор диапазона
     const v5 = chs[4]||1500;
-    const zone = v5<1250?'0 (Дом)':v5<1500?'1':v5<1750?'2':'3';
+    const zone = v5<=1502?'0 (Дом)':v5<=1506?'1':v5<=1511?'2':'3';
     setText('dbg-wp-zone', 'ch5='+v5+' → точка '+zone);
   }
 
@@ -248,7 +248,7 @@ function tmplHelp() {
 <div class="card">
   <h2>Управление с пульта</h2>
   <div class="help-row"><b>ch9</b><span>Режим: низ=MANUAL, середина=SAVE WP, верх=AUTO</span></div>
-  <div class="help-row"><b>ch5</b><span>Выбор точки (крутилка): 1000-1249=Дом, 1250-1499=Точка1, 1500-1749=Точка2, 1750-2000=Точка3</span></div>
+  <div class="help-row"><b>ch5</b><span>Выбор точки: 1500-1502=Дом, 1503-1506=Точка1, 1507-1511=Точка2, 1512-1517=Точка3 (за пределами диапазона — крайняя зона)</span></div>
   <div class="help-row"><b>ch6</b><span>Лимит скорости в AUTO (крутилка): от 50% до 100% от максимальной скорости</span></div>
   <div class="help-row"><b>ch1/ch2</b><span>Прямое управление в режиме MANUAL (tank mix на пульте: правый стик X+Y)</span></div>
   <div class="help-row"><b>ch3</b><span>Круиз-контроль: если >1750 — включается удержание курса по компасу</span></div>

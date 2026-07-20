@@ -96,12 +96,10 @@ void loop() {
                 navigationReset();
                 logEvent("RC lost — auto-return HOME");
             }
-            static uint32_t navTimer = 0;
-            if (millis() - navTimer >= (uint32_t)cfg.navInterval) {
-                navTimer = millis();
-                MotorOut m = navigationStep(boat.speedLimitPwm);
-                motorsWrite(m.left, m.right);
-            }
+            // Каскад: внутренний контур держит курс на каждом loop (как круиз),
+            // внешний сам ограничен navInterval внутри navigationStep
+            MotorOut m = navigationStep(boat.speedLimitPwm);
+            motorsWrite(m.left, m.right);
         } else {
             if (boat.navigating || boat.mode != MODE_MANUAL) {
                 logEvent("RC lost — STOP (no GPS/WP)");
@@ -280,12 +278,10 @@ void loop() {
         }
 
         if (boat.navigating) {
-            static uint32_t navTimer = 0;
-            if (millis() - navTimer >= (uint32_t)cfg.navInterval) {
-                navTimer = millis();
-                MotorOut m = navigationStep(boat.speedLimitPwm);
-                motorsWrite(m.left, m.right);
-            }
+            // Каскад: внутренний контур держит курс на каждом loop (как круиз),
+            // внешний сам ограничен navInterval внутри navigationStep
+            MotorOut m = navigationStep(boat.speedLimitPwm);
+            motorsWrite(m.left, m.right);
         } else {
             motorsStop();
         }

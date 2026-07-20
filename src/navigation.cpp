@@ -79,69 +79,22 @@ static float headingError(float target, float current) {
     return (float)err;
 }
 
-// ── PID-регулятор (адаптирован из Katerok) ──────────────────────
-// (текущий_курс, целевой_курс, kp, ki, kd, dt_sec, min, max)
-static float pidIntegral    = 0.0f;
-static float pidPrevHeading = 0.0f;
-static bool  pidFirstStep   = true;   // первый шаг после сброса — без D (нет прошлого курса)
-static float smoothPid     = 0.0f;
+// ── Каскадная навигация (ветка cascade-nav) ─────────────────────
+// PID из AUTO убран. Вместо него два контура:
+//   внешний (раз в cfg.navInterval): дистанция, bearing на точку, замедления
+//     → цель курса navTargetHeading и тяга navThrust;
+//   внутренний (каждый вызов, ~200Гц из loop()): держит navTargetHeading тем же
+//     P-регулятором, что и круиз (err × cruiseGain) — круиз на воде доказал,
+//     что по компасу этот контур не рыскает.
+// В петле управления нет ни I/D, ни сглаживания выхода — нет и запаздывания,
+// которое в PID-варианте превращало демпфирование в раскачку.
 static float smoothBearing = -1.0f;  // курс на точку, сглаженный bearingAlpha
 static double navStartLat = 0.0, navStartLon = 0.0;  // позиция старта текущей ноги (для LOS)
 static bool   navStartPending = true;                 // ещё не захватили старт этой ноги
-
-static int computePID(float currentHeading, float targetHeading,
-                      float kp, float ki, float kd,
-                      float dt, int minOut, int maxOut) {
-    float err = headingError(targetHeading, currentHeading);
-
-    // Интегральная составляющая с ограничением (anti-windup).
-    // В мёртвой зоне (err==0) интеграл плавно стекает к нулю: после разворота
-    // он остаётся заряженным и продолжает уводить лодку при нулевой ошибке,
-    // пока та не выйдет из зоны с другой стороны (S-виляние на прямых).
-    // 0.98 за шаг ≈ полный сток за ~10с при 200мс — короткие проходы через
-    // зону почти не трогают триммер от асимметрии тяги/ветра.
-    if (err == 0.0f) {
-        pidIntegral *= 0.98f;
-    } else {
-        pidIntegral = constrain(pidIntegral + err * dt * ki, (float)minOut, (float)maxOut);
-    }
-
-    // Дифференциальная составляющая — по скорости изменения курса, а не d(err)/dt:
-    //  - при смене точки err скачет на десятки градусов за шаг → D-kick на весь
-    //    кламп (в старых navlog первая строка каждой ноги: pidRaw на упоре);
-    //  - мёртвая зона делает err ступенчатым (0 ↔ ±deadzone) → рывок D на каждой
-    //    ступеньке.
-    // Скорость поворота курса от обоих эффектов свободна.
-    // Знак: курс растёт → err падает, поэтому минус.
-    float D = 0.0f;
-    if (pidFirstStep) {
-        pidFirstStep = false;
-    } else {
-        float dh = currentHeading - pidPrevHeading;
-        if (dh > 180.0f)  dh -= 360.0f;
-        if (dh < -180.0f) dh += 360.0f;
-        D = -dh / dt;
-    }
-    pidPrevHeading = currentHeading;
-
-    float out = err * kp + pidIntegral + D * kd;
-    return (int)constrain(out, (float)minOut, (float)maxOut);
-}
-
-// Нелинейная коррекция выхода PID (pidCurve).
-// 550-моторы слишком мощные для линейного PID: мелкий шум курса (пара градусов)
-// даёт заметную разницу PWM → корабль дёргается влево-вправо.
-// curve=1.0 — без изменений (линейно, как раньше).
-// curve>1.0 — у центра (маленькие ошибки) выход подавляется сильнее, чем у краёв
-// (большие ошибки) — гасит рысканье от шума, но не теряет силу для реальных отклонений.
-// curve<1.0 — обратный эффект (резче у центра), обычно не нужен.
-static float applyPidCurve(float val, float range, float curve) {
-    if (range < 1.0f || curve <= 0.01f) return val;
-    float norm = constrain(val / range, -1.0f, 1.0f);
-    float sign = (norm < 0.0f) ? -1.0f : 1.0f;
-    float curved = sign * powf(fabsf(norm), curve);
-    return curved * range;
-}
+static float    navTargetHeading = -1.0f;  // цель внутреннего контура; <0 = не задана
+static int      navThrust        = 1500;   // тяга, посчитанная внешним контуром
+static uint32_t navOuterMs       = 0;      // millis() последнего шага внешнего контура
+static float    navLastDist      = 0.0f;   // дистанция с последнего внешнего шага (для лога)
 
 // ── Учёт "тихих" пропусков навигации ────────────────────────────
 // Ранний выход из navigationStep не пишет строку в navlog — в логе это
@@ -156,12 +109,12 @@ static void navSkipMark(const char *reason) {
     }
 }
 
-// Сброс PID при начале новой навигации
+// Сброс состояния навигации при начале новой ноги
 void navigationReset() {
-    pidIntegral   = 0.0f;
-    pidFirstStep  = true;
-    navSkipSince  = 0;
-    smoothPid     = 0.0f;
+    navTargetHeading = -1.0f;
+    navThrust        = 1500;
+    navOuterMs       = 0;
+    navSkipSince     = 0;
     smoothBearing = -1.0f;  // забыть курс на предыдущую точку — иначе первые
                              // секунды новой ноги гонимся за старой целью
     navStartPending = true; // захватить новую стартовую точку для LOS при следующем шаге
@@ -170,8 +123,9 @@ void navigationReset() {
 // ── Структура выхода моторов ─────────────────────────────────────
 struct MotorOut { int left, right; };
 
-// ── Навигация к точке (алгоритм из Katerok + наш PWM) ──────────
-// Период вызова: 100мс (из main.cpp — вызываем только раз в 100мс)
+// ── Навигация к точке — каскад ──────────────────────────────────
+// ВАЖНО: в отличие от PID-версии, вызывается на КАЖДОМ loop() (~200Гц),
+// как круиз — внешний контур сам ограничивает себя cfg.navInterval.
 MotorOut navigationStep(int speedLimit) {
     Waypoint &wp = boat.waypoints[boat.wpTarget];  // едем к wpTarget, не к wpSelected
 
@@ -180,132 +134,105 @@ MotorOut navigationStep(int speedLimit) {
         return {1500, 1500};
     }
 
-    float dist = geoDistance(boat.latitude, boat.longitude, wp.lat, wp.lon);
-    boat.distToTarget = dist;
+    uint32_t now = millis();
+    bool outerRan = false;
+    if (navTargetHeading < 0.0f || now - navOuterMs >= (uint32_t)cfg.navInterval) {
+        navOuterMs = now;
+        outerRan = true;
 
-    // Глюк GPS: точка дальше 500 м — стоп
-    if (dist > 500.0f) {
-        navSkipMark("dist>500m (GPS glitch?)");
-        return {1500, 1500};
+        float dist = geoDistance(boat.latitude, boat.longitude, wp.lat, wp.lon);
+        boat.distToTarget = dist;
+        navLastDist = dist;
+
+        // Глюк GPS: точка дальше 500 м — стоп
+        if (dist > 500.0f) {
+            navSkipMark("dist>500m (GPS glitch?)");
+            return {1500, 1500};
+        }
+
+        // Пропуск закончился — зафиксировать длительность дыры в логе
+        if (navSkipSince != 0) {
+            logEvent("NAV resumed after %.1fs skip", (millis() - navSkipSince) / 1000.0f);
+            navSkipSince = 0;
+        }
+
+        // Приплыли
+        if (dist < cfg.arrivalRadius) {
+            boat.navigating    = false;
+            navigationReset();
+            logEvent("Arrived at WP%d!", boat.wpTarget);
+            return {1500, 1500};
+        }
+
+        // Захват стартовой точки ноги для LOS — только на первом валидном шаге
+        // после сброса (см. navigationReset), чтобы линия старт→цель не съезжала
+        if (navStartPending) {
+            navStartLat = boat.latitude;
+            navStartLon = boat.longitude;
+            navStartPending = false;
+        }
+
+        float rawBearing = (cfg.navMode == 1)
+            ? losBearing(boat.latitude, boat.longitude, navStartLat, navStartLon,
+                         wp.lat, wp.lon, cfg.losLookahead)
+            : geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
+        // Сглаживаем bearing (bearingAlpha) — GPS-прыжки на 1-3м не должны
+        // дёргать цель внутреннего контура
+        if (smoothBearing < 0.0f) {
+            smoothBearing = rawBearing;  // первый цикл — без фильтра
+        } else {
+            // Учитываем переход через 0/360
+            float diff = rawBearing - smoothBearing;
+            if (diff > 180.0f)  diff -= 360.0f;
+            if (diff < -180.0f) diff += 360.0f;
+            smoothBearing += cfg.bearingAlpha * diff;
+            if (smoothBearing < 0.0f)   smoothBearing += 360.0f;
+            if (smoothBearing >= 360.0f) smoothBearing -= 360.0f;
+        }
+        navTargetHeading  = smoothBearing;
+        boat.targetHeading = smoothBearing;
+
+        // Тяга: лимит с крутилки ch6, замедление у точки и на резком повороте
+        int topSpeed = min(cfg.cruiseSpeed, speedLimit);
+        topSpeed = max(topSpeed, 1510);  // не ниже минимума движения
+
+        int maxSpeed = topSpeed;
+        if (dist < cfg.slowdownDist && cfg.slowdownDist > 0.1f) {
+            float factor = dist / cfg.slowdownDist;
+            int slowMin = min(cfg.slowdownSpeed, speedLimit);
+            maxSpeed = (int)(slowMin + (topSpeed - slowMin) * factor);
+        }
+
+        // Замедление на резком повороте: режем поступательную тягу, чтобы
+        // разворот шёл почти на месте, без заноса по инерции.
+        float errAbs = fabsf(headingError(navTargetHeading, boat.heading));
+        if (errAbs > 30.0f) {
+            float turnFactor = constrain(1.0f - (errAbs - 30.0f) / 90.0f, cfg.turnSlowFloor, 1.0f);
+            int turnSpeed = 1500 + (int)((maxSpeed - 1500) * turnFactor);
+            maxSpeed = min(maxSpeed, turnSpeed);
+        }
+        navThrust = maxSpeed;
     }
 
-    // Пропуск закончился — зафиксировать длительность дыры в логе
-    if (navSkipSince != 0) {
-        logEvent("NAV resumed after %.1fs skip", (millis() - navSkipSince) / 1000.0f);
-        navSkipSince = 0;
+    // ── Внутренний контур: математика 1-в-1 из cruiseStep ───────
+    // err × cruiseGain, кламп ±maxDiff/2, центрирование тяги. Каждый вызов.
+    float err = headingError(navTargetHeading, boat.heading);
+    float autoSteer = constrain(err * cfg.cruiseGain, -100.0f, 100.0f);
+    float steerClamped = constrain(autoSteer, -(float)cfg.maxDiff/2, (float)cfg.maxDiff/2);
+    int maxSteer = (int)fabsf(steerClamped);
+    int centeredThrust = constrain(navThrust, 1000, 2000 - maxSteer);
+    int left  = constrain((int)(centeredThrust + steerClamped), 1000, 2000);
+    int right = constrain((int)(centeredThrust - steerClamped), 1000, 2000);
+
+    // Лог — на частоте внешнего контура, формат CSV прежний.
+    // В колонках PID теперь: pidRaw = err×gain до клампов,
+    // pidCurved = после клампов, pidFinal = фактическая полуразница моторов.
+    if (outerRan) {
+        navLogRecord(boat.latitude, boat.longitude, boat.heading, navTargetHeading, err,
+                     autoSteer, steerClamped, (left - right) / 2.0f,
+                     left, right, navLastDist, boat.speed,
+                     boat.satellites, boat.hdop, boat.wpTarget);
     }
-
-    // Приплыли (< 1м — стоп как в Katerok, без ожидания нуля)
-    if (dist < cfg.arrivalRadius) {
-        boat.navigating    = false;
-        navigationReset();
-        logEvent("Arrived at WP%d!", boat.wpTarget);
-        return {1500, 1500};
-    }
-
-    // Захват стартовой точки ноги для LOS — только на первом валидном шаге
-    // после сброса (см. navigationReset), чтобы линия старт→цель не съезжала
-    if (navStartPending) {
-        navStartLat = boat.latitude;
-        navStartLon = boat.longitude;
-        navStartPending = false;
-    }
-
-    float rawBearing = (cfg.navMode == 1)
-        ? losBearing(boat.latitude, boat.longitude, navStartLat, navStartLon,
-                     wp.lat, wp.lon, cfg.losLookahead)
-        : geoBearing(boat.latitude, boat.longitude, wp.lat, wp.lon);
-    // Сглаживаем bearing фильтром низких частот (alpha=0.1) чтобы убрать GPS шум
-    // Без фильтра GPS прыжки на 1-3м меняют bearing на несколько градусов → рывки
-    if (smoothBearing < 0.0f) {
-        smoothBearing = rawBearing;  // первый цикл — без фильтра
-    } else {
-        // Учитываем переход через 0/360
-        float diff = rawBearing - smoothBearing;
-        if (diff > 180.0f)  diff -= 360.0f;
-        if (diff < -180.0f) diff += 360.0f;
-        smoothBearing += cfg.bearingAlpha * diff;
-        if (smoothBearing < 0.0f)   smoothBearing += 360.0f;
-        if (smoothBearing >= 360.0f) smoothBearing -= 360.0f;
-    }
-    float bearing = smoothBearing;
-    boat.targetHeading = bearing;
-    float err = headingError(bearing, boat.heading);
-
-    // Максимальная мощность: как в Katerok снижаем при приближении
-    // Katerok: < 3м → скорость/2. Адаптируем к PWM 1500..1900
-    // Максимальная скорость: минимум из настройки и лимита с крутилки ch6
-    int topSpeed = min(cfg.cruiseSpeed, speedLimit);
-    topSpeed = max(topSpeed, 1510);  // не ниже минимума движения
-
-    int maxSpeed = topSpeed;
-    if (dist < cfg.slowdownDist && cfg.slowdownDist > 0.1f) {
-        float factor = dist / cfg.slowdownDist;
-        // slowdownSpeed тоже ограничиваем лимитом
-        int slowMin = min(cfg.slowdownSpeed, speedLimit);
-        maxSpeed = (int)(slowMin + (topSpeed - slowMin) * factor);
-    }
-
-    // Замедление на резком повороте: если ошибка курса большая, лодка на
-    // полном ходу входит в разворот как в занос — за счёт инерции проскакивает
-    // нужный курс, пока цикл управления (navInterval) это заметит ("змейка").
-    // Режем поступательную тягу пропорционально ошибке — разворот получается
-    // почти на месте, без заноса. errAbs<=30° — без изменений, >=120° — до floor.
-    float errAbs = fabsf(err);
-    if (errAbs > 30.0f) {
-        float turnFactor = constrain(1.0f - (errAbs - 30.0f) / 90.0f, cfg.turnSlowFloor, 1.0f);
-        int turnSpeed = 1500 + (int)((maxSpeed - 1500) * turnFactor);
-        maxSpeed = min(maxSpeed, turnSpeed);
-    }
-
-    // PID: dt соответствует navInterval
-    float dt = cfg.navInterval / 1000.0f;
-    int halfRange = maxSpeed - 1500;
-    int pidRaw = computePID(boat.heading, bearing,
-                            cfg.pidKp, cfg.pidKi, cfg.pidKd,
-                            dt, -halfRange, halfRange);
-
-    // Нелинейная коррекция — смягчает реакцию на мелкие ошибки курса
-    float pidCurved = applyPidCurve((float)pidRaw, (float)halfRange, cfg.pidCurve);
-
-    // Сглаживание выхода PID — убирает резкие скачки моторов
-    // alpha=0.3: новое значение на 30%, старое на 70% → плавные изменения
-    smoothPid = smoothPid * 0.7f + pidCurved * 0.3f;
-    int pidOut = constrain((int)smoothPid, -halfRange, halfRange);
-    pidOut = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
-
-    // pidOut > 0 → нужно повернуть налево → притормозить правый мотор
-    // pidOut < 0 → нужно повернуть направо → притормозить левый мотор
-    // Центрирование тяги — как в круизе:
-    // оба мотора симметрично относительно maxSpeed
-    // один прибавляет, другой убавляет на одинаковую величину
-    int pidClamped = constrain(pidOut, -cfg.maxDiff, cfg.maxDiff);
-    int absPid = abs(pidClamped);
-    int centeredSpeed = constrain(maxSpeed, 1000, 2000 - absPid);
-    int fast = centeredSpeed + absPid;
-    int slow = centeredSpeed - absPid;
-
-    // Реальный потолок КПД моторов (проверено на воде: ~1750-1800, не 2000) —
-    // выше него добавка PWM почти не даёт тяги. Если "быстрый" борт упёрся
-    // в потолок, излишек перекладываем на "медленный" — иначе часть заданной
-    // разницы тяги впустую улетает выше потолка вместо реального поворота.
-    if (fast > cfg.motorMaxPwm) {
-        int excess = fast - cfg.motorMaxPwm;
-        fast -= excess;
-        slow -= excess;
-    }
-
-    int left  = (pidClamped >= 0) ? fast : slow;
-    int right = (pidClamped >= 0) ? slow : fast;
-
-    left  = constrain(left,  1000, 2000);
-    right = constrain(right, 1000, 2000);
-
-    // Лог для анализа/отладки — та же ошибка курса, что видел PID
-    navLogRecord(boat.latitude, boat.longitude, boat.heading, bearing, err,
-                 (float)pidRaw, pidCurved, (float)pidOut,
-                 left, right, dist, boat.speed,
-                 boat.satellites, boat.hdop, boat.wpTarget);
 
     return {left, right};
 }

@@ -81,8 +81,9 @@ static float headingError(float target, float current) {
 
 // ── PID-регулятор (адаптирован из Katerok) ──────────────────────
 // (текущий_курс, целевой_курс, kp, ki, kd, dt_sec, min, max)
-static float pidIntegral   = 0.0f;
-static float pidPrevErr    = 0.0f;
+static float pidIntegral    = 0.0f;
+static float pidPrevHeading = 0.0f;
+static bool  pidFirstStep   = true;   // первый шаг после сброса — без D (нет прошлого курса)
 static float smoothPid     = 0.0f;
 static float smoothBearing = -1.0f;  // курс на точку, сглаженный bearingAlpha
 static double navStartLat = 0.0, navStartLon = 0.0;  // позиция старта текущей ноги (для LOS)
@@ -93,12 +94,35 @@ static int computePID(float currentHeading, float targetHeading,
                       float dt, int minOut, int maxOut) {
     float err = headingError(targetHeading, currentHeading);
 
-    // Интегральная составляющая с ограничением (anti-windup)
-    pidIntegral = constrain(pidIntegral + err * dt * ki, (float)minOut, (float)maxOut);
+    // Интегральная составляющая с ограничением (anti-windup).
+    // В мёртвой зоне (err==0) интеграл плавно стекает к нулю: после разворота
+    // он остаётся заряженным и продолжает уводить лодку при нулевой ошибке,
+    // пока та не выйдет из зоны с другой стороны (S-виляние на прямых).
+    // 0.98 за шаг ≈ полный сток за ~10с при 200мс — короткие проходы через
+    // зону почти не трогают триммер от асимметрии тяги/ветра.
+    if (err == 0.0f) {
+        pidIntegral *= 0.98f;
+    } else {
+        pidIntegral = constrain(pidIntegral + err * dt * ki, (float)minOut, (float)maxOut);
+    }
 
-    // Дифференциальная составляющая
-    float D = (err - pidPrevErr) / dt;
-    pidPrevErr = err;
+    // Дифференциальная составляющая — по скорости изменения курса, а не d(err)/dt:
+    //  - при смене точки err скачет на десятки градусов за шаг → D-kick на весь
+    //    кламп (в старых navlog первая строка каждой ноги: pidRaw на упоре);
+    //  - мёртвая зона делает err ступенчатым (0 ↔ ±deadzone) → рывок D на каждой
+    //    ступеньке.
+    // Скорость поворота курса от обоих эффектов свободна.
+    // Знак: курс растёт → err падает, поэтому минус.
+    float D = 0.0f;
+    if (pidFirstStep) {
+        pidFirstStep = false;
+    } else {
+        float dh = currentHeading - pidPrevHeading;
+        if (dh > 180.0f)  dh -= 360.0f;
+        if (dh < -180.0f) dh += 360.0f;
+        D = -dh / dt;
+    }
+    pidPrevHeading = currentHeading;
 
     float out = err * kp + pidIntegral + D * kd;
     return (int)constrain(out, (float)minOut, (float)maxOut);
@@ -119,10 +143,24 @@ static float applyPidCurve(float val, float range, float curve) {
     return curved * range;
 }
 
+// ── Учёт "тихих" пропусков навигации ────────────────────────────
+// Ранний выход из navigationStep не пишет строку в navlog — в логе это
+// выглядит как загадочная дыра (см. разбор navlog 5-17). Отмечаем начало
+// пропуска (один раз за эпизод) и длительность при возобновлении.
+static uint32_t navSkipSince = 0;
+
+static void navSkipMark(const char *reason) {
+    if (navSkipSince == 0) {
+        navSkipSince = millis();
+        logEvent("NAV skip: %s", reason);
+    }
+}
+
 // Сброс PID при начале новой навигации
 void navigationReset() {
     pidIntegral   = 0.0f;
-    pidPrevErr    = 0.0f;
+    pidFirstStep  = true;
+    navSkipSince  = 0;
     smoothPid     = 0.0f;
     smoothBearing = -1.0f;  // забыть курс на предыдущую точку — иначе первые
                              // секунды новой ноги гонимся за старой целью
@@ -138,6 +176,7 @@ MotorOut navigationStep(int speedLimit) {
     Waypoint &wp = boat.waypoints[boat.wpTarget];  // едем к wpTarget, не к wpSelected
 
     if (!wp.valid || !boat.gpsFix || boat.hdop > 5.0f) {
+        navSkipMark(!wp.valid ? "WP invalid" : "no fix / hdop>5");
         return {1500, 1500};
     }
 
@@ -146,7 +185,14 @@ MotorOut navigationStep(int speedLimit) {
 
     // Глюк GPS: точка дальше 500 м — стоп
     if (dist > 500.0f) {
+        navSkipMark("dist>500m (GPS glitch?)");
         return {1500, 1500};
+    }
+
+    // Пропуск закончился — зафиксировать длительность дыры в логе
+    if (navSkipSince != 0) {
+        logEvent("NAV resumed after %.1fs skip", (millis() - navSkipSince) / 1000.0f);
+        navSkipSince = 0;
     }
 
     // Приплыли (< 1м — стоп как в Katerok, без ожидания нуля)

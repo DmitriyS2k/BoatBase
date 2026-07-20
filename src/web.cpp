@@ -62,8 +62,13 @@ void wsPush() {
     ws.textAll(json);
 }
 
+// Хоть один клиент подключался с момента загрузки — для авто-выключения WiFi
+static bool everClientConnected = false;
+
 static void onWsEvent(AsyncWebSocket*, AsyncWebSocketClient*, AwsEventType t,
-                      void*, uint8_t*, size_t) { (void)t; }
+                      void*, uint8_t*, size_t) {
+    if (t == WS_EVT_CONNECT) everClientConnected = true;
+}
 
 // ── GET /api/settings ───────────────────────────────────────────
 static void handleGetSettings(AsyncWebServerRequest *req) {
@@ -345,11 +350,23 @@ void setWifiEnabled(bool enable) {
 
 bool getWifiEnabled() { return wifiEnabled; }
 
+#define WIFI_AUTO_OFF_MS 30000
+
 void webUpdate() {
     static uint32_t t = 0;
     if (millis() - t >= 200) {
         t = millis();
         wsPush();
         ws.cleanupClients();
+    }
+
+    // Никто не подключился за WIFI_AUTO_OFF_MS после загрузки — гасим WiFi.
+    // Разово (once), ничего не трогаем в webInit() — та же setWifiEnabled(),
+    // что уже безопасно работает по сн4 в SAVE_WP.
+    static bool autoOffDone = false;
+    if (!autoOffDone && wifiEnabled && !everClientConnected && millis() >= WIFI_AUTO_OFF_MS) {
+        autoOffDone = true;
+        setWifiEnabled(false);
+        logEvent("WiFi auto-off — no client in %ds", WIFI_AUTO_OFF_MS / 1000);
     }
 }

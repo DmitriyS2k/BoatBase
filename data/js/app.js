@@ -188,7 +188,7 @@ function tmplDash() {
 
   <label style="margin-top:10px">Частота обновления GPS <span class="hint">выше=свежее курс на точку, но риск потерь на 5Гц</span></label>
   <div style="display:flex;gap:8px">
-    <select id="gpsRateHz" style="flex:1;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary)">
+    <select id="gpsRateHz" style="flex:1">
       <option value="1">1Гц (дефолт модуля)</option>
       <option value="2" selected>2Гц</option>
       <option value="5">5Гц (на свой риск)</option>
@@ -386,11 +386,11 @@ function tmplSettings() {
 
 <div class="card">
   <h2>Режим наведения (AUTO)</h2>
-  <p class="help-intro">Два способа целиться в точку — переключай для теста, старый остаётся по умолчанию.</p>
+  <p class="help-intro">Два способа целиться в точку — переключай для теста, старый остаётся по умолчанию. «Прямо в точку» может дать дугу, если стартуешь не с прямой линии на цель. «Line-of-sight» вместо этого сходится на саму линию старт→точка.</p>
   <label>Способ</label>
-  <select id="navMode" style="width:100%;padding:8px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary);margin-bottom:10px">
-    <option value="0">Прямо в точку (старый) — даёт дугу, если стартуешь не с прямой</option>
-    <option value="1">Line-of-sight (новый) — целится на прямую линию старт→точка</option>
+  <select id="navMode" style="margin-bottom:10px">
+    <option value="0">Прямо в точку (старый)</option>
+    <option value="1">Line-of-sight (новый)</option>
   </select>
   <label>Упреждение по линии (losLookahead), м = <span id="llVal">—</span> <span class="hint">меньше=резче сходится к прямой, больше=плавнее</span></label>
   <input type="range" id="losLookahead" min="3" max="30" step="1" value="10">
@@ -468,7 +468,7 @@ function tmplSettings() {
     <div style="font-size:1.3rem;font-weight:500;min-width:60px" id="liveHdg">—°</div>
     <div style="font-size:.8rem;color:#64748b">сырые: X=<span id="liveX">—</span> Y=<span id="liveY">—</span></div>
   </div>
-  <select id="compassAxis" style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--border);background:var(--surface-1);color:var(--text-primary);font-size:.9rem">
+  <select id="compassAxis" style="font-size:.9rem">
     <option value="0">0 — стандарт математический</option>
     <option value="1">1 — X→нос, Y→вправо ✅ попробуй первым</option>
     <option value="2">2 — X→нос, Y→влево</option>

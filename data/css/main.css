@@ -6,6 +6,7 @@
   --text-accent:#3b82f6;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
 body{font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:#1e293b;border-bottom:1px solid #334155}
 .logo{font-size:1.1rem;font-weight:700;flex:1}
@@ -39,7 +40,7 @@ main{padding:10px;display:flex;flex-direction:column;gap:10px;max-width:600px;ma
 .wp-status{font-size:.7rem;margin-top:4px}
 label{display:block;margin-bottom:4px;font-size:.85rem;color:#94a3b8}
 input[type=number],input[type=range]{width:100%;margin-bottom:12px;background:#0f172a;border:1px solid #334155;color:#e2e8f0;padding:6px;border-radius:6px}
-select{width:100%;padding:6px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:8px}
+select{width:100%;max-width:100%;padding:6px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:.85rem;margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btn{width:100%;padding:10px;border:none;border-radius:8px;font-size:.95rem;font-weight:600;cursor:pointer;margin-top:4px}
 .btn-blue{background:#2563eb;color:#fff}
 .btn-blue:active{background:#1d4ed8}

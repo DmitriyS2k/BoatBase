@@ -1,4 +1,5 @@
 #include "cruiselog.h"
+#include "settings.h"
 
 #define CRUISELOG_DEFAULT_CAPACITY 1000
 #define CRUISELOG_MAX_CAPACITY     2000
@@ -71,6 +72,7 @@ int  cruiseLogCapacity() { cruiseLogEnsureAlloc(); return capacity; }
 static int    fillIdx        = 0;
 static int    fillSnapHead   = 0;
 static int    fillSnapCount  = 0;
+static bool   fillConfigSent = false;
 static bool   fillHeaderSent = false;
 static String fillPending;
 
@@ -78,6 +80,7 @@ void cruiseLogFillReset() {
     fillIdx        = 0;
     fillSnapHead   = head;
     fillSnapCount  = count;
+    fillConfigSent = false;
     fillHeaderSent = false;
     fillPending    = "";
 }
@@ -86,7 +89,18 @@ size_t cruiseLogFillCsv(uint8_t *buffer, size_t maxLen, size_t /*index*/) {
     size_t written = 0;
     while (written < maxLen) {
         if (fillPending.length() == 0) {
-            if (!fillHeaderSent) {
+            if (!fillConfigSent) {
+                // Настройки на момент скачивания — чтобы CSV было понятно,
+                // при каких параметрах записан этот заезд (снимок, не построчно —
+                // если менял настройки посреди лога без очистки, тут будут только
+                // последние значения)
+                char cfgLine[160];
+                snprintf(cfgLine, sizeof(cfgLine),
+                    "# cruiseGain=%.2f cruiseSteerRate=%.1f maxDiff=%d compassDeadzone=%.1f\n",
+                    cfg.cruiseGain, cfg.cruiseSteerRate, cfg.maxDiff, cfg.compassDeadzone);
+                fillPending = cfgLine;
+                fillConfigSent = true;
+            } else if (!fillHeaderSent) {
                 fillPending = "t_ms,lat,lon,heading,lockedHeading,err,ch4,manualSteer,"
                               "autoSteer,steerClamped,motorL,motorR,thrust\n";
                 fillHeaderSent = true;

@@ -20,6 +20,17 @@
 #define IBUS_SENS_TX_PIN   33
 #define RC_TIMEOUT_MS      500
 
+// ── Детект реальной потери пульта (не просто отключения приёмника) ──
+// Приёмник на борту продолжает слать валидные iBUS-кадры даже когда сам
+// пульт вне зоны/выключен — RC_TIMEOUT_MS (по свежести кадров) этого не
+// увидит. Настроен аппаратный фейлсейв на пульте: при потере связи сн5
+// и сн6 приёмник сам выставляет эти конкретные значения (не встречаются
+// при обычном управлении). Ждём FAILSAFE_HOLD_MS подряд в этом состоянии
+// перед тем как считать пульт потерянным — защита от одиночного глюка.
+#define FAILSAFE_CH5_VALUE 1878
+#define FAILSAFE_CH6_VALUE 1882
+#define FAILSAFE_HOLD_MS   15000
+
 IBusBM ibusServo;
 IBusBM ibusSensor;
 HardwareSerial IBusServoSerial(2);
@@ -83,7 +94,19 @@ void receiverUpdate() {
         }
     }
 
-    boat.rcConnected = (millis() - boat.lastRcMs) < RC_TIMEOUT_MS;
+    // ── Фейлсейв сн5/сн6: держится FAILSAFE_HOLD_MS подряд → пульт потерян ──
+    static uint32_t failsafeSinceMs = 0;
+    bool failsafePattern = (boat.ch[4] == FAILSAFE_CH5_VALUE)
+                         && (boat.ch[5] == FAILSAFE_CH6_VALUE);
+    if (failsafePattern) {
+        if (failsafeSinceMs == 0) failsafeSinceMs = millis();
+    } else {
+        failsafeSinceMs = 0;
+    }
+    bool failsafeConfirmed = failsafeSinceMs != 0
+                           && (millis() - failsafeSinceMs >= FAILSAFE_HOLD_MS);
+
+    boat.rcConnected = ((millis() - boat.lastRcMs) < RC_TIMEOUT_MS) && !failsafeConfirmed;
 
     // ── Сенсор 1: режим ─────────────────────────────────────────
     ibusSensor.setSensorMeasurement(sensMode, (uint16_t)boat.mode);

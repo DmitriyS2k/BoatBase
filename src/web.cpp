@@ -80,6 +80,7 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["trimLeft"]        = cfg.trimLeft;
     doc["trimRight"]       = cfg.trimRight;
     doc["cruiseGain"]      = cfg.cruiseGain;
+    doc["cruiseSteerRate"] = cfg.cruiseSteerRate;
     doc["maxDiff"]         = cfg.maxDiff;
     doc["bearingAlpha"]    = cfg.bearingAlpha;
     doc["navInterval"]     = cfg.navInterval;
@@ -116,6 +117,7 @@ static void handlePostSettings(AsyncWebServerRequest *req, uint8_t *data,
     if (doc["trimLeft"].is<int>())          cfg.trimLeft        = doc["trimLeft"];
     if (doc["trimRight"].is<int>())         cfg.trimRight       = doc["trimRight"];
     if (doc["cruiseGain"].is<float>())      cfg.cruiseGain      = doc["cruiseGain"];
+    if (doc["cruiseSteerRate"].is<float>()) cfg.cruiseSteerRate = doc["cruiseSteerRate"];
     if (doc["maxDiff"].is<int>())           cfg.maxDiff         = doc["maxDiff"];
     if (doc["bearingAlpha"].is<float>())    cfg.bearingAlpha    = doc["bearingAlpha"];
     if (doc["navInterval"].is<int>())       cfg.navInterval     = doc["navInterval"];

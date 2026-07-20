@@ -19,6 +19,7 @@ void settingsLoad() {
     cfg.trimLeft       = prefs.getInt  ("trimL",    0);
     cfg.trimRight      = prefs.getInt  ("trimR",    0);
     cfg.cruiseGain     = prefs.getFloat("cruGain",  0.8f);
+    cfg.cruiseSteerRate= prefs.getFloat("cruSteerR",15.0f);
     cfg.maxDiff        = prefs.getInt("maxDiff",    150);
     cfg.bearingAlpha   = prefs.getFloat("brAlpha",  0.15f);
     cfg.navInterval    = prefs.getInt("navInt",     200);
@@ -60,6 +61,7 @@ void settingsSave() {
     prefs.putInt  ("trimL",   cfg.trimLeft);
     prefs.putInt  ("trimR",   cfg.trimRight);
     prefs.putFloat("cruGain", cfg.cruiseGain);
+    prefs.putFloat("cruSteerR", cfg.cruiseSteerRate);
     prefs.putInt("maxDiff",   cfg.maxDiff);
     prefs.putFloat("brAlpha", cfg.bearingAlpha);
     prefs.putInt("navInt",    cfg.navInterval);

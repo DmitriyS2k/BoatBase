@@ -3,7 +3,8 @@
 
 // ── Лог круиз-режима — кольцевой буфер в RAM, отдельно от navlog ──
 // Пишется на каждом шаге cruiseStep(). Другие поля, чем у navlog:
-// нет точки назначения/дистанции, зато есть cruiseLockedHeading и СН4.
+// нет точки назначения/дистанции, зато есть целевой курс круиза (lockedHeading —
+// теперь это cruiseTargetHeading, крутится от сн4, а не фиксируется единожды) и СН4.
 
 void cruiseLogRecord(double lat, double lon, float heading, float lockedHeading, float err,
                       int ch4, int manualSteer, float autoSteer, float steerClamped,

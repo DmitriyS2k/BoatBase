@@ -317,9 +317,14 @@ function tmplHelp() {
 
 <div class="card">
   <h2>Круиз-контроль — что крутить</h2>
+  <p class="help-intro">сн4 не рулит моторами напрямую — он плавно крутит цифру желаемого курса, а регулятор всегда в замкнутом контуре её держит (даже пока ты доворачиваешь стиком). Поэтому при отпускании стика нет резкого рывка "открытый→замкнутый контур" и заброса по инерции.</p>
   <div class="help-param">
     <div class="help-pname">Коэффициент круиза (cruiseGain) — старт 0.8</div>
     <div class="help-pdesc">Сила удержания курса в ручном круиз-режиме (ch3>1750). <b>Мало</b> — медленно возвращается на курс после волны. <b>Много</b> — дёргается при коррекции. 0.5-1.5 обычно хорошо для моторов 550.</div>
+  </div>
+  <div class="help-param">
+    <div class="help-pname">Скорость поворота от сн4 (cruiseSteerRate) — старт 15°/с</div>
+    <div class="help-pdesc">Насколько быстро полное отклонение сн4 крутит цель курса. <b>Мало</b> — доворот на воде ощущается вялым. <b>Много</b> — трудно точно подрулить на пару градусов. На устойчивость почти не влияет — подбирай по ощущениям от управления.</div>
   </div>
 </div>
 
@@ -338,7 +343,7 @@ function tmplHelp() {
     <li>Откалибруй компас вдали от металла и моторов (Настройки → Компас). Выбери правильную ось.</li>
     <li>Установи магнитное склонение для своего региона (magnetic-declination.com). Для Украины ~+7..+9°.</li>
     <li>Настрой trim моторов в MANUAL — поплыви прямо и убери уход в сторону.</li>
-    <li>Проверь круиз (ch3>1750) — держит курс, ch4 подруливает, после отпускания фиксирует новый курс.</li>
+    <li>Проверь круиз (ch3>1750) — держит курс, ch4 плавно доворачивает цель курса (всегда замкнутый контур), после отпускания держит тот курс, куда довернул.</li>
     <li>Сохрани точку Дом: выйди на воду, переключи SAVE WP, ch1≥1600 при хорошем GPS (≥6 спутников).</li>
     <li>Установи стартовые значения PID: Kp=3.0, Ki=1.5, Kd=0.5, maxDiff=150, bearingAlpha=0.15.</li>
     <li>Дай команду вернуться домой (AUTO → ch2≤1400). Смотри как едет.</li>
@@ -412,6 +417,8 @@ function tmplSettings() {
 
   <label>Круиз gain = <span id="crgVal">—</span> <span class="hint">удержание курса в ручном круизе (ch3)</span></label>
   <input type="range" id="cruiseGain" min="0.1" max="5" step="0.1" value="0.8">
+  <label>Круиз: скорость поворота от сн4, °/с = <span id="csrVal">—</span> <span class="hint">сн4 крутит цель курса, а не моторы напрямую · выше=резче доворачивает, ниже=плавнее</span></label>
+  <input type="range" id="cruiseSteerRate" min="3" max="40" step="1" value="15">
   <div class="row"><span>Макс. разница моторов (maxDiff)</span><span id="mdVal">150</span></div>
   <input type="range" id="maxDiff" min="10" max="400" step="5" value="150">
   <div class="row"><span>Сглаживание курса на точку (bearingAlpha)</span><span id="baVal">0.15</span></div>
@@ -539,6 +546,7 @@ function loadSettings() {
       set('pidKd',        d.pidKd);
       set('pidCurve',     d.pidCurve ?? 1.0);
       set('cruiseGain',   d.cruiseGain);
+      set('cruiseSteerRate', d.cruiseSteerRate ?? 15);
       set('maxDiff',      d.maxDiff ?? 150);
       set('bearingAlpha', d.bearingAlpha ?? 0.15);
       set('navInterval',  d.navInterval ?? 200);
@@ -558,7 +566,7 @@ function loadSettings() {
       set('trimRight',    d.trimRight ?? 0);
       updRangeLabels();
     }).catch(()=>{});
-  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','maxDiff','bearingAlpha','navInterval','turnSlowFloor','losLookahead','trimLeft','trimRight'].forEach(id=>{
+  ['pidKp','pidKi','pidKd','pidCurve','cruiseGain','cruiseSteerRate','maxDiff','bearingAlpha','navInterval','turnSlowFloor','losLookahead','trimLeft','trimRight'].forEach(id=>{
     document.getElementById(id)?.addEventListener('input', updRangeLabels);
   });
   // Живое изменение оси — сразу сохраняем и видим результат
@@ -574,6 +582,7 @@ function updRangeLabels() {
   bind('pidKd','kdVal',2);
   bind('pidCurve','pcVal',2);
   bind('cruiseGain','crgVal',1);
+  bind('cruiseSteerRate','csrVal',0);
   bind('maxDiff','mdVal',0);
   bind('bearingAlpha','baVal',2);
   bind('navInterval','niVal',0);
@@ -610,6 +619,7 @@ function saveSettings() {
     pidKd:         parseFloat(get('pidKd')),
     pidCurve:      parseFloat(get('pidCurve')),
     cruiseGain:    parseFloat(get('cruiseGain')),
+    cruiseSteerRate: parseFloat(get('cruiseSteerRate')),
     cruiseSpeed:   parseInt(get('cruiseSpeed')),
     slowdownDist:  parseFloat(get('slowdownDist') || 5),
     slowdownSpeed: parseInt(get('slowdownSpeed')  || 1550),

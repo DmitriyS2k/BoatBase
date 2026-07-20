@@ -265,36 +265,55 @@ MotorOut navigationStep(int speedLimit) {
 }
 
 // ── Круиз-контроль (ручной режим с удержанием курса) ───────────
-// ch3 > 1750 → активен, ch4 — ручное подруливание
-static float cruiseLockedHeading = -1.0f;
+// ch3 > 1750 → активен, ch4 — руление.
+//
+// Раньше: ch4 крутил моторы напрямую (открытый контур, регулятор не смотрел
+// на курс), а в момент отпускания резко включался P-регулятор на "курс на
+// момент отпускания" — реальная инерция поворота (~0.3с) проносила нос мимо
+// зафиксированного курса, пока регулятор спохватится (заброс до ~35°+
+// постоянный уход вправо на неисправленном mechanical trim).
+//
+// Теперь: ch4 крутит cruiseTargetHeading — само число желаемого курса
+// (cfg.cruiseSteerRate °/с при полном отклонении), а регулятор ВСЕГДА
+// в замкнутом контуре держит эту цель, крутится она сейчас или стоит на
+// месте. Мода "открытый контур" больше нет — заброса по инерции при
+// отпускании стика в разы меньше, потому что регулятор ни на миг не
+// переставал следить за курсом.
+static float cruiseTargetHeading = -1.0f;
+static uint32_t cruiseLastMs = 0;
 
 MotorOut cruiseStep(int thrust, int ch4) {
     thrust = constrain(thrust, 1000, 2000);
 
     if (thrust < 1510) {
-        cruiseLockedHeading = -1.0f;
+        cruiseTargetHeading = -1.0f;
+        cruiseLastMs = 0;
         return {1500, 1500};
     }
 
-    // ch4: 1000..2000 → -100..100, мёртвая зона ±8 (было ±15 — слишком большая)
-    int steerRaw    = map(constrain(ch4, 1000, 2000), 1000, 2000, -100, 100);
-    int manualSteer = (abs(steerRaw) > 8) ? steerRaw : 0;
+    uint32_t now = millis();
+    float dt = (cruiseLastMs == 0) ? 0.0f : (now - cruiseLastMs) / 1000.0f;
+    if (dt > 0.5f) dt = 0.0f;  // защита от скачка после долгой паузы (первый шаг, лаги loop())
+    cruiseLastMs = now;
 
-    if (manualSteer != 0) {
-        cruiseLockedHeading = boat.heading;
-    } else if (cruiseLockedHeading < 0) {
-        cruiseLockedHeading = boat.heading;
+    // ch4: 1000..2000 → -100..100, мёртвая зона ±8
+    int steerRaw = map(constrain(ch4, 1000, 2000), 1000, 2000, -100, 100);
+    int ch4Deflection = (abs(steerRaw) > 8) ? steerRaw : 0;
+
+    if (cruiseTargetHeading < 0.0f) {
+        // Первый шаг после включения круиза — стартуем с текущего курса
+        cruiseTargetHeading = boat.heading;
+    } else if (ch4Deflection != 0 && dt > 0.0f) {
+        cruiseTargetHeading += (ch4Deflection / 100.0f) * cfg.cruiseSteerRate * dt;
+        while (cruiseTargetHeading < 0.0f)   cruiseTargetHeading += 360.0f;
+        while (cruiseTargetHeading >= 360.0f) cruiseTargetHeading -= 360.0f;
     }
 
-    float err = headingError(cruiseLockedHeading, boat.heading);
-    // Расширяем диапазон автокоррекции до ±100 (было ±50)
+    float err = headingError(cruiseTargetHeading, boat.heading);
     float autoSteer = constrain(err * cfg.cruiseGain, -100.0f, 100.0f);
 
-    float totalSteer = (manualSteer != 0) ? (float)manualSteer : autoSteer;
-    totalSteer = constrain(totalSteer, -100.0f, 100.0f);
-
     // Ограничиваем разницу моторов через cfg.maxDiff
-    float steerClamped = constrain(totalSteer, -(float)cfg.maxDiff/2, (float)cfg.maxDiff/2);
+    float steerClamped = constrain(autoSteer, -(float)cfg.maxDiff/2, (float)cfg.maxDiff/2);
     // Центрируем тягу чтобы коррекция была симметричной при высоком газе
     // Если thrust высокий, опускаем оба мотора чтобы было место для коррекции вверх
     int maxSteer = (int)fabsf(steerClamped);
@@ -302,13 +321,14 @@ MotorOut cruiseStep(int thrust, int ch4) {
     int left  = constrain((int)(centeredThrust + steerClamped), 1000, 2000);
     int right = constrain((int)(centeredThrust - steerClamped), 1000, 2000);
 
-    cruiseLogRecord(boat.latitude, boat.longitude, boat.heading, cruiseLockedHeading, err,
-                     ch4, manualSteer, autoSteer, steerClamped,
+    cruiseLogRecord(boat.latitude, boat.longitude, boat.heading, cruiseTargetHeading, err,
+                     ch4, ch4Deflection, autoSteer, steerClamped,
                      left, right, thrust);
 
     return {left, right};
 }
 
 void cruiseReset() {
-    cruiseLockedHeading = -1.0f;
+    cruiseTargetHeading = -1.0f;
+    cruiseLastMs = 0;
 }

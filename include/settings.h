@@ -10,7 +10,8 @@ struct BoatSettings {
     float arrivalRadius = 3.0f;   // метры — считать «прибыл»
     int   cruiseSpeed   = 1650;   // PWM тяга в авто-режиме (1500..1900)
     int   minSatellites = 5;      // минимум спутников
-    float tempAlarm     = 60.0f;   // температура перегрева мотора °C
+    float tempAlarm     = 70.0f;   // °C — выше этого режем газ до tempLimitPwm во всех режимах (motors.cpp)
+    int   tempLimitPwm  = 1650;    // потолок ПВМ при перегреве (motorsWrite применяет после trim, до финального constrain)
     float slowdownDist  = 5.0f;   // метры — начало замедления перед точкой
     int   slowdownSpeed = 1550;   // PWM минимальная скорость в зоне замедления
 

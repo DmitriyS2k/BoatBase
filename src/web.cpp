@@ -75,6 +75,8 @@ static void handleGetSettings(AsyncWebServerRequest *req) {
     doc["arrivalRadius"]   = cfg.arrivalRadius;
     doc["cruiseSpeed"]     = cfg.cruiseSpeed;
     doc["minSatellites"]   = cfg.minSatellites;
+    doc["tempAlarm"]       = cfg.tempAlarm;
+    doc["tempLimitPwm"]    = cfg.tempLimitPwm;
     doc["slowdownDist"]    = cfg.slowdownDist;
     doc["slowdownSpeed"]   = cfg.slowdownSpeed;
     doc["trimLeft"]        = cfg.trimLeft;
@@ -112,6 +114,8 @@ static void handlePostSettings(AsyncWebServerRequest *req, uint8_t *data,
     if (doc["arrivalRadius"].is<float>())   cfg.arrivalRadius   = doc["arrivalRadius"];
     if (doc["cruiseSpeed"].is<int>())       cfg.cruiseSpeed     = doc["cruiseSpeed"];
     if (doc["minSatellites"].is<int>())     cfg.minSatellites   = doc["minSatellites"];
+    if (doc["tempAlarm"].is<float>())       cfg.tempAlarm       = doc["tempAlarm"];
+    if (doc["tempLimitPwm"].is<int>())      cfg.tempLimitPwm    = doc["tempLimitPwm"];
     if (doc["slowdownDist"].is<float>())    cfg.slowdownDist    = doc["slowdownDist"];
     if (doc["slowdownSpeed"].is<int>())     cfg.slowdownSpeed   = doc["slowdownSpeed"];
     if (doc["trimLeft"].is<int>())          cfg.trimLeft        = doc["trimLeft"];

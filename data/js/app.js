@@ -444,6 +444,18 @@ function tmplSettings() {
 </div>
 
 <div class="card">
+  <h2>Термозащита моторов</h2>
+  <p class="help-intro">Датчик на корпусе мотора. При превышении порога газ режется до потолка ниже — во всех режимах (AUTO, круиз, ручное, веб-джойстик).</p>
+  <label>Порог срабатывания, °C</label>
+  <input type="number" id="tempAlarm" min="30" max="100" step="1" value="70">
+
+  <label style="margin-top:10px">Потолок ПВМ при перегреве <span class="hint">1500=стоп · выше=слабее ограничение</span></label>
+  <input type="number" id="tempLimitPwm" min="1500" max="2000" step="10" value="1650">
+
+  <button class="btn btn-blue" onclick="saveSettings()">💾 Сохранить</button>
+</div>
+
+<div class="card">
   <h2>Компас</h2>
   <label>Магнитное склонение, °</label>
   <input type="number" id="compassDecl" min="-30" max="30" step="0.5" value="0">
@@ -557,6 +569,8 @@ function loadSettings() {
       set('slowdownSpeed',d.slowdownSpeed ?? 1550);
       set('arrivalRadius',d.arrivalRadius);
       set('minSatellites',d.minSatellites);
+      set('tempAlarm',    d.tempAlarm ?? 70);
+      set('tempLimitPwm', d.tempLimitPwm ?? 1650);
       set('compassDecl',      d.compassDecl);
       set('compassAxis',      d.compassAxis ?? 1);
       set('compassDeadzone',  d.compassDeadzone ?? 2);
@@ -623,6 +637,8 @@ function saveSettings() {
     slowdownSpeed: parseInt(get('slowdownSpeed')  || 1550),
     arrivalRadius: parseFloat(get('arrivalRadius')),
     minSatellites: parseInt(get('minSatellites')),
+    tempAlarm:     parseFloat(get('tempAlarm')),
+    tempLimitPwm:  parseInt(get('tempLimitPwm')),
     trimLeft:      parseInt(get('trimLeft')  || 0),
     trimRight:     parseInt(get('trimRight') || 0),
   };

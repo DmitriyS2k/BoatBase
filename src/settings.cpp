@@ -14,6 +14,8 @@ void settingsLoad() {
     cfg.arrivalRadius  = prefs.getFloat("aRadius",  3.0f);
     cfg.cruiseSpeed    = prefs.getInt  ("cSpeed",   1650);
     cfg.minSatellites  = prefs.getInt  ("minSat",   5);
+    cfg.tempAlarm      = prefs.getFloat("tempAlarm", 70.0f);
+    cfg.tempLimitPwm   = prefs.getInt  ("tempLimPwm", 1650);
     cfg.slowdownDist   = prefs.getFloat("slowDist", 5.0f);
     cfg.slowdownSpeed  = prefs.getInt  ("slowSpd",  1550);
     cfg.trimLeft       = prefs.getInt  ("trimL",    0);
@@ -56,6 +58,8 @@ void settingsSave() {
     prefs.putFloat("aRadius", cfg.arrivalRadius);
     prefs.putInt  ("cSpeed",  cfg.cruiseSpeed);
     prefs.putInt  ("minSat",  cfg.minSatellites);
+    prefs.putFloat("tempAlarm", cfg.tempAlarm);
+    prefs.putInt  ("tempLimPwm", cfg.tempLimitPwm);
     prefs.putFloat("slowDist",cfg.slowdownDist);
     prefs.putInt  ("slowSpd", cfg.slowdownSpeed);
     prefs.putInt  ("trimL",   cfg.trimLeft);

@@ -31,6 +31,14 @@ void motorsWrite(int left, int right) {
     if (left  > 1510) left  += cfg.trimLeft;
     if (right > 1510) right += cfg.trimRight;
 
+    // Термозащита: мотор перегрелся — режем газ сверху во всех режимах
+    // (AUTO, круиз, ручное, веб-джойстик — все идут через эту функцию).
+    // После trim, чтобы итоговый сигнал на ESC гарантированно не превышал потолок.
+    if (boat.motorTemp > cfg.tempAlarm) {
+        left  = min(left,  cfg.tempLimitPwm);
+        right = min(right, cfg.tempLimitPwm);
+    }
+
     boat.motorLeft  = constrain(left,  1000, 2000);
     boat.motorRight = constrain(right, 1000, 2000);
     ledcWrite(CH_LEFT,  usToDuty(boat.motorLeft));
